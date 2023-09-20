@@ -132,6 +132,7 @@ bool fafikLib_readLineByte( wxFFile &ffile, wxString *line, fafikLib_readLineByt
 
 class fafikLib_readLineByte_file;
 class fafikLib_readLineByte_fromStr;
+class fafikLib_readLineByte_Binary;
 class fafikLib_readLineByte_arr;
 class fafikLib_readLineByte_part;
 class fafikLib_write_fileArr;
@@ -150,6 +151,7 @@ class fafikLib_readLineByte_base
 		objectType_undefined= 0,
 		objectType_file,
 		objectType_fromStr,
+		objectType_binary,
 		objectType_arr,
 		objectType_part,
 		objectType_writeArr
@@ -261,12 +263,14 @@ class fafikLib_readLineByte_base
 	static bool reCloseFile(wxFFile& file) { return file.Close(); }
 
   //here are some calls to translate it upwards
-	inline bool getAs_derived(fafikLib_readLineByte_file** asDerived )		const {*asDerived= nullptr; if(objectType_file== _typeOfObject)		return( *asDerived= (fafikLib_readLineByte_file*)this );}
-	inline bool getAs_derived(fafikLib_readLineByte_fromStr** asDerived)	const {*asDerived= nullptr; if(objectType_fromStr== _typeOfObject)	return( *asDerived= (fafikLib_readLineByte_fromStr*)this );}
-	inline bool getAs_derived(fafikLib_readLineByte_arr** asDerived)		const {*asDerived= nullptr; if(objectType_arr== _typeOfObject)		return( *asDerived= (fafikLib_readLineByte_arr*)this );}
-	inline bool getAs_derived(fafikLib_readLineByte_part** asDerived)		const {*asDerived= nullptr; if(objectType_part== _typeOfObject)		return( *asDerived= (fafikLib_readLineByte_part*)this );}
-	inline bool getAs_derived(fafikLib_write_fileArr** asDerived)			const {*asDerived= nullptr; if(objectType_writeArr== _typeOfObject)	return( *asDerived= (fafikLib_write_fileArr*)this );}
-	inline bool getAs_derived(fafikLib_readLineByte_baWritable** asDerived)	const {*asDerived= nullptr; if(isWritableType())					return( *asDerived= (fafikLib_readLineByte_baWritable*)this );}
+	inline bool getAs_derived(fafikLib_readLineByte_file** asDerived )		const {*asDerived= nullptr; if(objectType_file== _typeOfObject)		return( *asDerived= (fafikLib_readLineByte_file*)this ); return false;}
+	inline bool getAs_derived(fafikLib_readLineByte_fromStr** asDerived)	const {*asDerived= nullptr; if(objectType_fromStr== _typeOfObject)	return( *asDerived= (fafikLib_readLineByte_fromStr*)this ); return false;}
+	inline bool getAs_derived(fafikLib_readLineByte_Binary** asDerived)		const {*asDerived= nullptr; if(objectType_binary== _typeOfObject)	return( *asDerived= (fafikLib_readLineByte_Binary*)this ); return false;}
+	inline bool getAs_derived(fafikLib_readLineByte_arr** asDerived)		const {*asDerived= nullptr; if(objectType_arr== _typeOfObject)		return( *asDerived= (fafikLib_readLineByte_arr*)this ); return false;}
+	inline bool getAs_derived(fafikLib_readLineByte_part** asDerived)		const {*asDerived= nullptr; if(objectType_part== _typeOfObject)		return( *asDerived= (fafikLib_readLineByte_part*)this ); return false;}
+	inline bool getAs_derived(fafikLib_write_fileArr** asDerived)			const {*asDerived= nullptr; if(objectType_writeArr== _typeOfObject)	return( *asDerived= (fafikLib_write_fileArr*)this ); return false;}
+	inline bool getAs_derived(fafikLib_readLineByte_baWritable** asDerived)	const {*asDerived= nullptr; if(isWritableType())					return( *asDerived= (fafikLib_readLineByte_baWritable*)this ); return false;}
+
 	inline BYTE getType_objectStored() const {return _typeOfObject;}
 	inline bool isWritableType()const {return _typeWritable;}
 };
@@ -385,6 +389,15 @@ class fafikLib_readLineByte_file: public fafikLib_readLineByte_baWritable
 		_free();
 		pass_p_ffile= new wxFFile(fileName, (readOnly? "rb" : "r+b") );
 		_ownedFile= autoDelete_pass_p_ffile= true;
+		return IsOpened();
+	}
+	bool Open( const wxString& fileName, const wxString& mode )
+	{
+		Close();
+		_free();
+		pass_p_ffile= new wxFFile(fileName, mode );
+		_ownedFile= autoDelete_pass_p_ffile= true;
+		return IsOpened();
 	}
   //operators
 	fafikLib_readLineByte_file& operator<< (const std::string& str){Seek(0, wxFromEnd); Write(str.data(), str.size()); return *this;}
@@ -500,6 +513,16 @@ class fafikLib_readLineByte_fromStr: public fafikLib_readLineByte_baWritable
 		p_buf_in= new std::string;
 		return IsOpened();
 	}
+	 ///calls string.reserve(size)
+	bool allocate(size_t size){
+		if(p_buf_in) p_buf_in->reserve(size);
+		return p_buf_in;
+	}
+	 ///calls string.reserve(size)
+	bool reserve(size_t size){
+		if(p_buf_in) p_buf_in->reserve(size);
+		return p_buf_in;
+	}
   //operators
 	fafikLib_readLineByte_fromStr& operator<< (const std::string& str){Seek(0, wxFromEnd); Write(str.data(), str.size()); return *this;}
 
@@ -547,6 +570,69 @@ class fafikLib_readLineByte_fromStr: public fafikLib_readLineByte_baWritable
 	inline bool setReadOnly(bool readOnly=true){return _writePermitted= !readOnly;}
 	 ///provided str can also be written to
 	inline bool setWriteable(bool canWrite=true){return _writePermitted= canWrite;}
+
+ protected:
+	size_t _lastPos= 0;
+};
+
+ ///wraps any raw Binary data in unified methods with wxFFile (consider using _fromStr with write support)
+class fafikLib_readLineByte_Binary: public fafikLib_readLineByte_base
+{
+ protected:
+ 	const BYTE* p_buf_in= nullptr;
+ 	size_t size= 0;
+
+ public:
+ 	virtual ~fafikLib_readLineByte_Binary(){}
+
+ 	fafikLib_readLineByte_Binary( const BYTE* p_buf_in, size_t size ):
+ 		p_buf_in(p_buf_in), size(size)
+	{_typeOfObject= objectType_binary;}
+ 	fafikLib_readLineByte_Binary( const char* p_buf_in, size_t size ):
+ 		p_buf_in( (BYTE*)p_buf_in ), size(size)
+	{_typeOfObject= objectType_binary;}
+ 	fafikLib_readLineByte_Binary( const BYTE* p_buf_in, size_t size, wxString *line_out, const fafikLib_readLineByte_EOL& useOnlyThisEndOL ):
+ 		p_buf_in(p_buf_in), size(size)
+	{
+		_typeOfObject= objectType_fromStr;
+		pass_p_line= line_out;
+		this->useEOL(useOnlyThisEndOL);	//use original assign
+	};
+
+	 ///opens a new data
+	bool Open( const BYTE* p_buf_in, size_t size ){
+		this->p_buf_in= p_buf_in;
+		this->size= size;
+		return IsOpened();
+	}
+  //operators
+
+  // [virtual override
+	///@return bool fafikLib_readLineByte( ... )
+	bool readLineByte( wxString *p_line= nullptr ) override;
+
+	size_t Read(void* p_buf, size_t n_count) override;
+
+	const wxString& GetName() const override;
+	///true if (p_buf_in)
+	bool IsOpened() const override;
+	bool IsClosed() const {return !IsOpened();}
+	wxFileOffset Length() const override;
+	bool Seek(wxFileOffset ofs, wxSeekMode mode = wxFromStart) override;
+	wxFileOffset Tell() const override;
+	///@return FFile.GetKind() or wxString.unknown
+	wxFileKind GetKind() const override;
+	///drops the pointer, can not be called again
+	bool Close() override;
+	bool Error() const override;
+		///2019-10-05
+	bool reOpen() override {return true;}
+		///2019-10-05
+	bool reClose() override {return false;}
+	bool rePosSeek(const wxFileOffset& toPos) override {
+		return Seek(toPos);
+	}
+  // end override]
 
  protected:
 	size_t _lastPos= 0;

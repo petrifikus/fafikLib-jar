@@ -10,11 +10,15 @@ SummFileSizes::~SummFileSizes()
 }
 
 
-void SummFileSizes::addSize(const wxULongLong& n, size_t n2)
+void SummFileSizes::addSize(const int64_t& n, size_t n2)
 {
 //	std::lock_guard<std::mutex> guard(g_queue_mutex);
     TotalSize+= n;
     TotalSize+= n2;
+}
+void SummFileSizes::setSize(const int64_t& n)
+{///just a wrapper for TotalSize
+	TotalSize= n;
 }
 
 void SummFileSizes::addFileCount(int n){
@@ -38,7 +42,7 @@ wxString SummFileSizes::PrintSizedHuman( bool Fit , unsigned short maxElements, 
 	auto TotalSizeCopy= TotalSize;
     wxString returnString;
 
-    wxULongLong splitBytes[5];
+    int64_t splitBytes[5];
     splitBytes[4] =  (TotalSizeCopy/amTB);
     splitBytes[3] = (TotalSizeCopy%amTB)/amGB;
     splitBytes[2] = (TotalSizeCopy%amGB)/amMB;
@@ -53,7 +57,7 @@ wxString SummFileSizes::PrintSizedHuman( bool Fit , unsigned short maxElements, 
                 maxElements_used++;
                 if(maxElements_used!=1 && !Compact2) returnString<< ", ";
                 if(!Compact2 || maxElements_used==1) returnString<< splitBytes[i_name];
-                else  returnString<< int( (float(splitBytes[i_name].ToDouble())/1024)*10 );
+                else  returnString<< int( (float(splitBytes[i_name])/1024)*10 );
                 if(!Compact2) returnString<< " " + Names[i_name];
                 if(Compact2 && maxElements_used==1){
                     returnString<< ".";
@@ -70,10 +74,6 @@ wxString SummFileSizes::PrintSizedHuman( bool Fit , unsigned short maxElements, 
 	return returnString;
 }
 
-void SummFileSizes::setSize(const wxULongLong& n)
-{///just a wrapper for TotalSize
-	TotalSize= n;
-}
 
 bool SummFileSizes::IsNotZero()
 {

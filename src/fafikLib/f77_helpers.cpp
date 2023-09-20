@@ -62,12 +62,13 @@ wxColour_F77::ChannelType wxColour_F77::hexToValue_part(const char* hexChar, boo
 	return outVal;
 }
 
+
 wxString PathFormatToWindowsLongPath_f77(const wxString& path)
 {	//prefix(\\?\) does not support (/ . ..)
 	wxString retStr(path);
-		// change '/' to '\'
+		// change '/' to '\'bs
 	replaceAll(retStr,"/", "\\", 0,0); // replace '/' to '\\'
-		// double '\' to single
+		// double '\'bs to single
 	replaceAll(retStr,"\\\\", "\\", 2,0); // replace double '\\' to single '\'
 		// remove '.'
 	replaceAll(retStr,"\\.\\", "\\" ); // remove '.'

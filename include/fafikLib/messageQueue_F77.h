@@ -9,7 +9,7 @@ enum messageQueue_F77_Error
     MSGQUEUE_F77_NO_ERROR= 0,	// operation completed successfully
     MSGQUEUE_F77_TIMEOUT,		// no messages received before timeout expired
     MSGQUEUE_F77_MISC_ERROR,	// some unexpected (and fatal) error has occurred
-    MSGQUEUE_F77_QUEUE_EMPTY,		// queue is empty
+    MSGQUEUE_F77_QUEUE_EMPTY,	// queue is empty
 };
 
 template <typename T>

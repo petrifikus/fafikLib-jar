@@ -14,38 +14,32 @@ void fafikLib_readLineByte_DetermineEOL( fafikLib_readLineByte_base &baseClass, 
 	std::string temp_str;
 	temp_str.resize(4097, 0);	//4096 +1 when next might be out of scope
 	size_t reed= 0;
-	const size_t invUint= -1;
-	char eolChars[]= {13,10};
+	const char eolChars[]= {13,10};	//CR LF
 
-	while(true)
-	{
+	while(true){
 		reed= baseClass.Read( &temp_str[0] , 4096 );
-		if( !reed|| reed==invUint ){
+		if( !reed|| reed== temp_str.npos ){
 			break;
 		}
-		pos_lenght_eol= temp_str.find_first_of( &eolChars[0], 0, 2 );
-        if( pos_lenght_eol<reed ){	// pos_lenght_eol!=invUint
-        	if(pos_lenght_eol== 4095){
+		pos_lenght_eol= temp_str.find_first_of( eolChars, 0, 2 );
+		if( pos_lenght_eol< reed ){	// if found an EOL char
+			if(pos_lenght_eol== 4095){ //in the unlikely case that one(of possible 2) character is exactly at the end of the read
 				reed+= baseClass.Read( &temp_str[4096] , 1 );	//we can add because -1 wont be returned
-        	}
-        	char retChars[3]= {-1};
-
-        	retChars[1]= temp_str.at( pos_lenght_eol );
-        	if( pos_lenght_eol>0 )
-				retChars[0]= temp_str.at( pos_lenght_eol-1 );
-			if( pos_lenght_eol+1<reed )
-				retChars[2]= temp_str.at( pos_lenght_eol+1 );
-
-			BYTE pos_start= -1;
-			BYTE pos_len= 0;
-			for(BYTE i=0; i<3; ++i ){
-				if( retChars[i]==eolChars[0] || retChars[i]==eolChars[1] ){
-					if(pos_start==BYTE(-1)) pos_start= i;
-					++pos_len;
-				}
 			}
-			if(pos_len) EOL.setTo(retChars[pos_start], pos_len>1 ? retChars[pos_start+1] : -1 );
-        }	//if reed
+	//@note: new code on 2022-12-08 (synced with fFile(WinApi))
+			fafikLib_readLineByte_EOL foundEol;
+			foundEol.setTo(temp_str[pos_lenght_eol], temp_str[pos_lenght_eol+1] );
+			BYTE sized= 0;
+			if(foundEol.begin()[0] == '\n'){	//LF	(Unix)
+				if(foundEol.begin()[1] == 13)	//CR	(Mac)
+					++sized;
+			}
+			else {
+				if(foundEol.begin()[1] == '\n')	//CR LF	(Win)
+					++sized;
+			}
+			EOL.setTo(foundEol.begin()[0], sized!=0 ? foundEol.begin()[1] : -1);
+		}	//if reed
 	}	//while
 
 	if(EOL.isDefault() ){	//EOL= onNotFound; error proof
@@ -419,6 +413,82 @@ bool fafikLib_readLineByte_fromStr::setEndOfFile()
 	return false;
 }
 
+
+
+bool fafikLib_readLineByte_Binary::readLineByte( wxString *p_line )
+{
+	if(!p_line) p_line= pass_p_line;
+	if(!p_line) return false;
+	return fafikLib_readLineByte( p_line );
+}
+size_t fafikLib_readLineByte_Binary::Read(void* p_buf, size_t n_count)
+{
+	if(this->IsClosed()) return -1;
+
+	if( (_lastPos+n_count)>Length() ){
+		n_count= Length()- _lastPos;
+	}
+	if( n_count== 0 ) return 0;
+
+	memcpy( p_buf, static_cast<const void*>( p_buf_in+(_lastPos) ), n_count );
+	_lastPos+= n_count;
+
+	return n_count;
+}
+const wxString& fafikLib_readLineByte_Binary::GetName() const
+{
+	return wxEmptyStringWx;
+}
+bool fafikLib_readLineByte_Binary::IsOpened() const
+{
+	return( p_buf_in );
+}
+wxFileOffset fafikLib_readLineByte_Binary::Length() const
+{
+	if(this->IsClosed()) return -1;
+	return size;
+}
+bool fafikLib_readLineByte_Binary::Seek(wxFileOffset ofs, wxSeekMode mode)
+{
+	if(this->IsClosed()) return false;
+
+	if( mode==wxFromStart ){
+		_lastPos= ofs;
+	} else if( mode==wxFromCurrent ){
+		_lastPos+= ofs;
+	} else if( mode==wxFromEnd ){
+		_lastPos= this->Length() -ofs;
+	}
+
+	if( _lastPos> this->Length() ) {
+		_lastPos= this->Length();
+//		return false;
+	}
+	return true;
+}
+wxFileOffset fafikLib_readLineByte_Binary::Tell() const
+{
+	if(this->IsClosed()) return -1;
+	return _lastPos;
+}
+wxFileKind fafikLib_readLineByte_Binary::GetKind() const
+{
+	return wxFileKind::wxFILE_KIND_UNKNOWN;
+}
+bool fafikLib_readLineByte_Binary::Close()
+{
+	resetEol();
+	resetLine();
+	if(this->IsClosed()) return false;
+	p_buf_in= nullptr;
+	_lastPos= 0;
+	size= 0;
+	return true;
+}
+bool fafikLib_readLineByte_Binary::Error() const
+{
+	return !IsOpened();
+}
 
 
 

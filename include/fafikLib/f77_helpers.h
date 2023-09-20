@@ -36,8 +36,19 @@ class wxColour_F77: public wxColour
 	 ///@param ColorHex: (0x or # also works) "RRGGBBaa" or "RGBa"
 	 ///translates "0xHex RGB(a)" into RGBa Values
 	wxColour_F77(const std::string& ColorHex);
+	wxColour_F77(): wxColour() {}
 	wxColour_F77(ChannelType r, ChannelType g, ChannelType b, ChannelType alpha=wxALPHA_OPAQUE ): wxColour(r,g,b,alpha) {}
+  //operators
+	bool operator==(const wxColour& colour) const {
+		return this->GetRGBA() == colour.GetRGBA();
+	}
+	wxColour_F77& operator = (const wxColour& colour) {
+		this->SetRGBA( colour.GetRGBA() );
+		return *this;
+	}
 
+
+ protected:
 	ChannelType hexToValue(const char* hexChar, bool len2=false) const;
 	ChannelType hexToValue_part(const char* hexChar, bool expand=false) const;
 };
@@ -52,14 +63,17 @@ class auto_find_handle
  	auto_find_handle() {}
  	auto_find_handle(const HANDLE& findHandle_): findHandle(findHandle_) {}
   //dstr
+	~auto_find_handle(){
+		close();
+	}
 	void close(){
 		if(findHandle!=NULL)
 			FindClose(findHandle);
 		findHandle= NULL;
 	}
- 	~auto_find_handle(){
-		close();
- 	}
+	bool isOk() const {return findHandle && findHandle!= INVALID_HANDLE_VALUE; }
+	bool error() const {return !isOk(); }
+
   //operators
  	auto_find_handle& operator = (const HANDLE& findHandle_) {findHandle= findHandle_; return *this;}
  	operator HANDLE() const { return findHandle; }

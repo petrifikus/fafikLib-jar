@@ -35,8 +35,24 @@ bool fafikLib_regex::isMatchingAttribFile_dir(const DWORD &fileAttribs, const DW
 	}
 	return( fileAttribs & mask_testAttribs); //matches the mask
 }
+wxString fafikLib_regex::getHashPart(const wxArrayString& PathInParts, const resultPosition* resultPos, _FileType_MDFC_Checksum* HashType_o)
+{
+	if(resultPos==nullptr || HashType_o==nullptr || resultPos->empty()) return wxEmptyString;
+	const wxString& fileName= PathInParts.Last();
+	const resultPosition_part& resultFile= resultPos->back();
+	wxString retVal;
+	for( const resultPosition_it& resultFileNamePos : resultFile){	//search for result that contains Hash info
+		if( resultFileNamePos.isHash() ){
+			retVal= fileName.SubString(resultFileNamePos.pos_from, resultFileNamePos.pos_to);	//extract the Hash info
+			(*HashType_o)= (_FileType_MDFC_Checksum)resultFileNamePos.Hash_type; 	//get the Hash Type
+			break;
+		}
+	}
+	return retVal;
+}
 
-int fafikLib_regex::testPath( const wxArrayString& PathInParts, const DWORD &fileAttribs, const bool& SamePath, const bool& isIncludeMode, canSkippSomeDirs* O_canSkippDirs ) const
+
+int fafikLib_regex::testPath( const wxArrayString& PathInParts, const DWORD &fileAttribs, const bool& SamePath, const bool& isIncludeMode, canSkippSomeDirs* O_canSkippDirs, resultPosition* resultPos ) const
 {
 	if(!b_compiled){
 		wxLogWarning("! Warning ! Cant test with empty, not set Pattern.");
@@ -69,6 +85,11 @@ int fafikLib_regex::testPath( const wxArrayString& PathInParts, const DWORD &fil
 	if(O_canSkippDirs){
 		old_O_canSkippDirs= (*O_canSkippDirs);
 		if(old_O_canSkippDirs>= regex_item.items_pathParts.size()) old_O_canSkippDirs= regex_item.items_pathParts.size()-1;
+	}
+	 //return the result of match, clean and resize
+	if(resultPos){
+		resultPos->clear();
+		resultPos->resize(regex_item.items_pathParts.size());
 	}
 	if( SamePath ){	//implements: skip directories before last item (this is very thrusting in caller proper handling directory Tree)
 		 //basically every time you enter or exit a folder this should be `false`
@@ -112,8 +133,16 @@ int fafikLib_regex::testPath( const wxArrayString& PathInParts, const DWORD &fil
 		 //work with this string (from array)
 		itPath_IO.tempPosIO.PathElement_str_p= &PathInParts.Item(indexPos_strArr);
 		itPath_IO.tempPosIO.index_inPathArr= indexPos_strArr;
-		 //test
-		errReturned= testPathPart( iterPathPart_named, itPath_IO );
+	 //save results of match
+		 //we want to get the result of match
+		resultPosition_part* resultPos_part= nullptr;
+		if(resultPos){
+			resultPos_part= &resultPos->at( iterPathPart- regex_item.items_pathParts.begin() );
+			resultPos_part->resize( iterPathPart_named.getSize() );
+		}
+
+		 //test, arg_3( Out result of match )
+		errReturned= testPathPart( iterPathPart_named, itPath_IO, resultPos_part );
 		 //check if error
 		if( errReturned ){ //failed to match
 			return hitTest_failedMatch;
@@ -128,7 +157,7 @@ int fafikLib_regex::testPath( const wxArrayString& PathInParts, const DWORD &fil
 	}
 return hitTest_ok;
 }
-int fafikLib_regex::testPathPart( const item_base_pathParts& namedP, itemPath_tempStore& itPath_IO ) const
+int fafikLib_regex::testPathPart( const item_base_pathParts& namedP, itemPath_tempStore& itPath_IO, resultPosition_part* resultPos_part ) const
 {
 	 //quick answer YES matches any
 	if( namedP._matchesAny ) return hitTest_ok;
@@ -142,15 +171,27 @@ int fafikLib_regex::testPathPart( const item_base_pathParts& namedP, itemPath_te
 	tempPosIO.item_returns_rBack.resize( tempPosIO.item_returns.size() );
 	tempPosIO.item_returns_hinted.resize( tempPosIO.item_returns.size() );
 
+	char foundType= 'f';
 	  //do a forward find
 	errReturned= testPath_forward(namedP, itPath_IO);
 	  //do a back find, small-error ?
 	if( errReturned== hitTest_failedPartially_checkBackwards ){
 		errReturned= testPath_backward(namedP, itPath_IO);
+		foundType= 'r';
 	}
 	  //do a find with hints (as 2 previous have failed but gave us min&max,start&end positions of where the matching parts are located)
 	if( errReturned== hitTest_failedPartially_checkBackwards ){
 		errReturned= testPath_withHints(namedP, itPath_IO);
+		foundType= 'h';
+	}
+	  //save back result pos
+	if(resultPos_part){
+		if(foundType== 'f')	//forward
+			copyPos_StartEnd_toResult(itPath_IO.tempPosIO.item_returns, *resultPos_part, namedP);
+		if(foundType== 'r')	//rBack
+			copyPos_StartEnd_toResult(itPath_IO.tempPosIO.item_returns_rBack, *resultPos_part, namedP);
+		if(foundType== 'h')	//hinted
+			copyPos_StartEnd_toResult(itPath_IO.tempPosIO.item_returns_hinted, *resultPos_part, namedP);
 	}
 
 	if(errReturned== hitTest_failedMatch){
@@ -183,6 +224,7 @@ int fafikLib_regex::testPath_forward( const item_base_pathParts& namedP, itemPat
 			return hitTest_failedMatch;
 		}
 		else if(errReturned== hitTest_failedPartially_checkBackwards){
+			if(0 == itersAtIndex) return hitTest_failedMatch;
 			b_failedPartially_checkBackwards= true;
 			tempPosIO.item_returns.at(itersAtIndex-1).reFind_pos_backward= (tempPosIO.reverseFind ? tempPosIO.reverseFind : namedItemReturns.found_pos_from);
 			tempPosIO.reverseFind= 0;
@@ -330,6 +372,47 @@ int fafikLib_regex::testPath_withHints( const item_base_pathParts& namedP, itemP
 		}
 	}
 	return hitTest_match;
+}
+
+int fafikLib_regex::copyPos_StartEnd_toResult(const wxVector<item_posFoundO>& inputVec, resultPosition_part& outputResult, const item_base_pathParts& context_itemBasePP)const
+{
+	int copied= 0;
+	outputResult.resize(inputVec.size());
+	auto copyTo= outputResult.begin();
+	auto contextIt= context_itemBasePP.begin();
+	for(auto iterIn= inputVec.begin(); iterIn!= inputVec.end(); ++iterIn){
+		++copied;
+		const item_posFoundO &refIt= *iterIn;
+		copyTo->pos_from= refIt.found_pos_from;
+		copyTo->pos_to= refIt.found_pos_to;
+		copyTo->type_processes= (*contextIt)->type_processes;
+		copyTo->Hash_type= (*contextIt)->HashType;
+	  //fix "*" pos
+		if( (*contextIt)->type_processes== item_processes_Star){
+		  //at front
+			if(copied== 1){ //starts with
+				copyTo->pos_from= 0;
+				if( (iterIn+1) == inputVec.end() ) //no next item
+					copyTo->pos_to= -1;
+				else { //get pos-1 of next item
+					copyTo->pos_to= ((iterIn+1)->found_pos_from)- 1;
+				}
+			}
+			else{ //not starts with
+				copyTo->pos_from= ((iterIn-1)->found_pos_to)+ 1;
+			}
+		  //at back
+			if(copied== (int)inputVec.size()){ //ends with
+				copyTo->pos_to= -1;
+			}
+			else { //not ends with
+				copyTo->pos_to= ((iterIn+1)->found_pos_from)- 1;
+			}
+		}
+		++copyTo;
+		++contextIt;
+	}
+	return copied;
 }
 
 int fafikLib_regex::setPattern( const wxString& strPattern, bool caseInsensitive, DWORD FileAttribs_type )
@@ -593,6 +676,91 @@ int fafikLib_regex::setPattern_advanced_findNext_separated(pattern_store_struct&
 	}
 return error_setPatternAdv_preemptiveExit;
 }
+int fafikLib_regex::setPattern_advanced_findNext_hash(pattern_store_struct& pattern_storeS)
+{
+	pattern_storeAdvTemp_struct& advTemp_store= *pattern_storeS.advTemp_store;
+	bool foundHash= false;
+	 ///local only iterate
+	size_t offsetPos= 0;
+
+	while( (pattern_storeS.iterAtPos_curr+ offsetPos)!= pattern_storeS.iterAtPos_end ){
+		const wxChar32& charAtPos= *(pattern_storeS.iterAtPos_curr+ offsetPos);
+		if( foundHash==false && charAtPos== wxChar32('#') ){	//find a hash(only once)
+			foundHash= true;
+			advTemp_store.found_start= pattern_storeS.iterAtPos_curr+ offsetPos;
+		}
+		else if(charAtPos== advTemp_store.advancedSeparatorChar ){	//if found return 0
+			advTemp_store.found_end= pattern_storeS.iterAtPos_curr+ offsetPos;
+			if(foundHash) break;	//ok
+			return error_setPatternAdv_slight;	//omitted (no Hash #)
+		} else if(charAtPos== wxChar32('}') ){		//if found return 0
+			advTemp_store.found_end= pattern_storeS.iterAtPos_curr+ offsetPos;
+			if(foundHash) break;	//ok
+			return error_setPatternAdv_slight;	//error not found (no Hash #)
+		}
+		++offsetPos;
+	}
+	if(foundHash){//ok
+		pattern_storeS.iterAtPos_curr+= offsetPos;
+		return 0; //ok
+	}
+return error_setPatternAdv_preemptiveExit;	//error not found
+}
+_FileType_MDFC_Checksum fafikLib_regex::setPattern_advanced_findNext_hashProcess(const pattern_store_struct& pattern_storeS)
+{
+	const pattern_storeAdvTemp_struct& advTemp_store= *pattern_storeS.advTemp_store;
+
+ //get unified string
+	wxString HashStr(advTemp_store.found_start, advTemp_store.found_end);
+	if(HashStr.StartsWith("#")) HashStr.Remove(0,1);
+	HashStr.LowerCase();
+	 ///found on pos
+	size_t foundPos= HashStr.npos;
+
+	if( HashStr.npos!=(foundPos= HashStr.find("crc")) ){
+		HashStr.Remove(0,foundPos+3);
+		if(HashStr.Contains("16")) return _FileType_MDFC_Checksum_crc16;
+		if(HashStr.Contains("32")) return _FileType_MDFC_Checksum_crc32;
+		if(HashStr.Contains("64")) return _FileType_MDFC_Checksum_crc64;
+	}
+	else if( HashStr.npos!=(foundPos= HashStr.find("md")) ){
+		HashStr.Remove(0,foundPos+2);
+		if(HashStr.Contains("2")) return _FileType_MDFC_Checksum_MD2;
+		if(HashStr.Contains("4")) return _FileType_MDFC_Checksum_MD4;
+		if(HashStr.Contains("5")) return _FileType_MDFC_Checksum_MD5;
+		if(HashStr.Contains("6")) return _FileType_MDFC_Checksum_MD6;
+	}
+	else if( HashStr.npos!=(foundPos= HashStr.find("sha")) ){
+		HashStr.Remove(0,foundPos+3);
+		if(HashStr.StartsWith("-")) HashStr.Remove(0,1);
+		if(HashStr.StartsWith("_")) HashStr.Remove(0,1);
+		if(HashStr.StartsWith(" ")) HashStr.Remove(0,1);
+
+		if(HashStr.StartsWith("2")) {
+			if(HashStr.Contains("224")) return _FileType_MDFC_Checksum_SHA2_224;
+			if(HashStr.Contains("384")) return _FileType_MDFC_Checksum_SHA2_384;
+			if(HashStr.Contains("512")) return _FileType_MDFC_Checksum_SHA2_512;
+
+			return _FileType_MDFC_Checksum_SHA2_256; //sha2 256 by default
+		}
+		else if( HashStr.StartsWith("3") ) {
+			if(HashStr.Contains("224")) return _FileType_MDFC_Checksum_SHA3_BLAKE2_224;
+			if(HashStr.Contains("384")) return _FileType_MDFC_Checksum_SHA3_BLAKE2_384;
+			if(HashStr.Contains("512")) return _FileType_MDFC_Checksum_SHA3_BLAKE2_512;
+
+			return _FileType_MDFC_Checksum_SHA3_BLAKE2_256; //sha3 256 by default
+		}
+		else { //try sha2 variants without mentioning the sha-2
+			if(HashStr.Contains("224")) return _FileType_MDFC_Checksum_SHA2_224;
+			if(HashStr.Contains("256")) return _FileType_MDFC_Checksum_SHA2_256;
+			if(HashStr.Contains("384")) return _FileType_MDFC_Checksum_SHA2_384;
+			if(HashStr.Contains("512")) return _FileType_MDFC_Checksum_SHA2_512;
+		}
+		return _FileType_MDFC_Checksum_SHA1; //sha1 by default
+	}
+
+	return _FileType_MDFC_Checksum_none;
+}
 int fafikLib_regex::setPattern_advanced_findNumberStr(pattern_store_struct& pattern_storeS, BYTE find_dot_forDouble)
 {
 	pattern_storeAdvTemp_struct& advTemp_store= *pattern_storeS.advTemp_store;
@@ -713,6 +881,7 @@ int fafikLib_regex::setPattern_advanced_anyOfChars(pattern_store_struct& pattern
 {
 	pattern_storeAdvTemp_struct& advTemp_store= *pattern_storeS.advTemp_store;
 	item_match_anyOfChars* temp_itemAdd= new item_match_anyOfChars;
+	 ///we have to delete the item if error occurs
 	_safeItem_based safeItem_based( temp_itemAdd );
 	 //copy options mask.( option_Inverted | )
 	temp_itemAdd->optionsMask.copyBit(option_Inverted, advTemp_store.optionsOverride );
@@ -722,6 +891,8 @@ int fafikLib_regex::setPattern_advanced_anyOfChars(pattern_store_struct& pattern
 	size_t backslCount= 0;
 	wxString tempStoreStr;
 
+
+ //find ranges [a-z]
 	bool findsRanges= true;
 	bool ThisIsRange= false;
 	advTemp_store.found_start= advTemp_store.found_end= pattern_storeS.iterAtPos_end;	//copy start & end pos
@@ -748,7 +919,7 @@ int fafikLib_regex::setPattern_advanced_anyOfChars(pattern_store_struct& pattern
 				backslCount= 0;
 				if( charAtPos== wxChar32('}') ) retVal= 2;
 				if( charAtPos== wxChar32(']') && charNext== wxChar32('[') ){
-					pattern_storeS.iterAtPos_curr += 2; //advance by 2
+					pattern_storeS.iterAtPos_curr += 2; //advance by 2 && continue
 					advTemp_store.found_start= advTemp_store.found_end= pattern_storeS.iterAtPos_curr;
 					 //allow {[a-z][,./-+=],1,2}
 					findsRanges= false;
@@ -809,9 +980,22 @@ int fafikLib_regex::setPattern_advanced_anyOfChars(pattern_store_struct& pattern
 		pattern_storeS.reason= "incomplete: {[a-z],1}";
 		return error_setPatternAdv_Error;
 	}
-	retVal= setPattern_advanced_findNext_separated( pattern_storeS );	//find ',;'
 
-	 //prepare to find 2 numbers (min max)
+
+ //prepare to find 2 numbers (min, max), AND #Hash
+	retVal= setPattern_advanced_findNext_separated( pattern_storeS );	//find ',;'
+	bool HashFound= false;
+	if(!retVal){ // no error
+	  //find Hash
+		retVal= setPattern_advanced_findNext_hash( pattern_storeS );	//find '#'
+		if(retVal == 0){
+			HashFound= true;
+			temp_itemAdd->HashType= setPattern_advanced_findNext_hashProcess( pattern_storeS );	//get Hash
+			if(temp_itemAdd->HashType!= _FileType_MDFC_Checksum_none)
+				temp_itemAdd->type_processes|= item_processes_xHashMask;
+			retVal= setPattern_advanced_findNext_separated( pattern_storeS );	//find ',;'
+		}
+	}
 	long tempNumber_min= 0;
 	long tempNumber_max= 0;
 	 //find numbers
@@ -834,10 +1018,31 @@ int fafikLib_regex::setPattern_advanced_anyOfChars(pattern_store_struct& pattern
 		}
 		else
 			temp_itemAdd->setAmount( tempNumber_min );	//only 1 number, that means (min= max= Number)
+
+		if(!HashFound){ // no hash found yet
+		  //find Hash
+			retVal= setPattern_advanced_findNext_hash( pattern_storeS );	//find '#'
+		  //could not, find comma and retry
+			if(retVal == error_setPatternAdv_slight){
+				retVal= setPattern_advanced_findNext_separated( pattern_storeS );	//find ',;'
+				retVal= setPattern_advanced_findNext_hash( pattern_storeS );	//find '#'
+			}
+		  //process Hash
+			if(retVal == 0){
+				HashFound= true;
+				temp_itemAdd->HashType= setPattern_advanced_findNext_hashProcess( pattern_storeS );	//get Hash
+				if(temp_itemAdd->HashType!= _FileType_MDFC_Checksum_none)
+					temp_itemAdd->type_processes|= item_processes_xHashMask;
+			}
+		}
 	} else {
 		 //so we did not find a number to specify the amount, we assume =1
 		temp_itemAdd->setAmount( 1 );
 	}
+
+	 //does this entry check #Hash
+	if(temp_itemAdd->HashType != _FileType_MDFC_Checksum_none)
+		regex_item.has_hash= true;
 	 //we add the item to list, and disarm() the auto deleter
 	regex_item.AddItem( temp_itemAdd );
 	safeItem_based.disarm();
@@ -860,6 +1065,7 @@ int fafikLib_regex::setPattern_advanced_anyOfChars_predefined(pattern_store_stru
 
 	const wxChar32& charAtPos= *pattern_storeS.iterAtPos_curr;
 	switch (charAtPos) {
+	//words only
 	 case 'W':
 		temp_itemAdd->optionsMask.setBit(option_Inverted, true);
 	 case 'w':
@@ -868,17 +1074,23 @@ int fafikLib_regex::setPattern_advanced_anyOfChars_predefined(pattern_store_stru
 		temp_itemAdd->add_range( item_CharsRange_FT('0', '9') );
 		temp_itemAdd->add_char('_');
 	 break;
-
+	//digits
 	 case 'D':
 		temp_itemAdd->optionsMask.setBit(option_Inverted, true);
 	 case 'd':
 		temp_itemAdd->add_range( item_CharsRange_FT('0', '9') );
 	 break;
-
+	//space chars
 	 case 'S':
 		temp_itemAdd->optionsMask.setBit(option_Inverted, true);
 	 case 's':
 		temp_itemAdd->charsToMatch= L" \t\n\x0B\f\r　";
+	 break;
+	//utf
+	 case 'u':
+		temp_itemAdd->optionsMask.setBit(option_Inverted, true);
+	 case 'U':
+		temp_itemAdd->add_range( item_CharsRange_FT(0, 127) );
 	 break;
 
 	 default:
@@ -1246,6 +1458,15 @@ void fafikLib_regex::item_base_pathParts::calc_len_predicted()
 	}
 }
 
+_FileType_MDFC_Checksum fafikLib_regex::full_regex_item::getHashType() const
+{
+	if(!hasHash()) return _FileType_MDFC_Checksum_none;
+	for(auto iter: items_p){
+		if(iter->HashType!= _FileType_MDFC_Checksum_none)
+			return iter->HashType;
+	}
+	return _FileType_MDFC_Checksum_none;
+}
 int fafikLib_regex::full_regex_item::separatePathElement( full_regex_item_ParserTempStore& tempStore )
 {
 	 //set array size with reserve
@@ -1295,45 +1516,44 @@ int fafikLib_regex::item_match_string::tryTest(item_posIO& item_posIO_store, ite
 		else	//find forward
 			ret_procVal= tryTest_forward(item_posIO_store, item_returns, itemTempIO);
 
-		if( ret_procVal!= wxString::npos ){
-		  //calc distance to End
-		  	if( do_r_find )
-				itemTempIO.DistanceToFin_now= ret_procVal;	//backward
-			else	//forward
-				itemTempIO.DistanceToFin_now= item_posIO_store.PathElement_str_p->size()- (ret_procVal+ this->match_str.size());
-		  //ok found, but where?
-			if( itemTempIO.DistanceToFin_now<= Distanced_ToFin ) {
-				item_posIO_store.pos_start_begin= itemTempIO.next_pos_start_begin;
-				item_returns.found_pos_from= ret_procVal;
-				item_returns.found_pos_to= ret_procVal+ this->match_str.size()-1;
+		if( ret_procVal== wxString::npos )
+			return hitTest_failedMatch;
+	  //calc distance to End
+		if( do_r_find )
+			itemTempIO.DistanceToFin_now= ret_procVal;	//backward
+		else	//forward
+			itemTempIO.DistanceToFin_now= item_posIO_store.PathElement_str_p->size()- (ret_procVal+ this->match_str.size());
+	  //ok found, but where?
+		if( itemTempIO.DistanceToFin_now<= Distanced_ToFin ) {
+			item_posIO_store.pos_start_begin= itemTempIO.next_pos_start_begin;
+			item_returns.found_pos_from= ret_procVal;
+			item_returns.found_pos_to= ret_procVal+ this->match_str.size()-1;
 
-				if( !do_r_find && itemTempIO.find_res > item_posIO_store.pos_off_maxPos ){
-				  //found out of range, --error
-					return hitTest_failedMatch;
-				}
-				else if( do_r_find && item_returns.found_pos_to < maxMaxPosOfEnd ){
-				  //r_found out of range, --error
-					return hitTest_failedMatch;
-				}
-				else if( !do_r_find && itemTempIO.find_res > itemTempIO.t_pos_start_maxOff ) {
-					  //save that max pos of find
-					item_posIO_store.reverseFind= ret_procVal;
-					return hitTest_failedPartially_checkBackwards;
-				}
-				else if( do_r_find && item_returns.found_pos_to < maxPosOfEnd ) {
-					  //save that max pos of find
-					item_posIO_store.reverseFind= ret_procVal;
-					return hitTest_failedPartially_checkBackwards;
-				}
-				  //found, at good pos, --ok
-				return hitTest_ok;
+			if( !do_r_find && itemTempIO.find_res > item_posIO_store.pos_off_maxPos ){
+			  //found out of range, --error
+				return hitTest_failedMatch;
 			}
-			else {
-				 //misaligned
-				continue;
+			else if( do_r_find && item_returns.found_pos_to < maxMaxPosOfEnd ){
+			  //r_found out of range, --error
+				return hitTest_failedMatch;
 			}
+			else if( !do_r_find && itemTempIO.find_res > itemTempIO.t_pos_start_maxOff ) {
+				  //save that max pos of find
+				item_posIO_store.reverseFind= ret_procVal;
+				return hitTest_failedPartially_checkBackwards;
+			}
+			else if( do_r_find && item_returns.found_pos_to < maxPosOfEnd ) {
+				  //save that max pos of find
+				item_posIO_store.reverseFind= ret_procVal;
+				return hitTest_failedPartially_checkBackwards;
+			}
+			  //found, at good pos, --ok
+			return hitTest_ok;
 		}
-		return hitTest_failedMatch;
+		else {
+			 //misaligned
+			continue;
+		}
 	}
 return hitTest_failedMatch; //just so compiler will shut up
 }
@@ -1746,7 +1966,6 @@ int fafikLib_regex::item_match_anyOfChars::tryTest(item_posIO& item_posIO_store,
 	items_tempStore it_IO;
 	unsigned short maxPosOfFind= item_posIO_store.get_maxPosOfFind();
 	size_t ret_procVal= -1;
-
 	item_returns.start_pos= item_posIO_store.pos_start_begin;
 
 	if( item_posIO_store.b_reverseCheck.getBit(option_rCheck_fromEnd) ){	//r find
@@ -1769,7 +1988,7 @@ return hitTest_ok;
 size_t fafikLib_regex::item_match_anyOfChars::tryTest_forward(item_posIO& item_posIO_store, item_posFoundO& item_returns, items_tempStore& it_IO) const
 { //has to be at least min, and matches up to max (does not have to be max), this item is quite specific and will not let next entry match from any other point
 	wxString::const_iterator atPosIter= item_posIO_store.PathElement_str_p->begin()+ item_posIO_store.pos_start_begin;
-	unsigned short maxPosOfFind_full= item_posIO_store.get_maxPosOfFind_full();
+	const unsigned short maxPosOfFind_full= item_posIO_store.get_maxPosOfFind_full();
 	size_t atPosIndex= item_posIO_store.pos_start_begin;
 	unsigned short LeftCharsToEnd= item_posIO_store.PathElement_str_p->size()-1- atPosIndex;
 	const bool b_invert= optionsMask.getBit(option_Inverted);
@@ -1790,12 +2009,13 @@ size_t fafikLib_regex::item_match_anyOfChars::tryTest_forward(item_posIO& item_p
 			if( !reachedMin && it_IO.matchingAmount>= predictedLength.min ){
 				reachedMin= true;	//mark it as passed
 			}
-		} else {
+		}
+		else {
 			if(!reachedMin){	//we still needed more, redo
 				it_IO.matchingAmount= 0;
 				if( item_posIO_store.PathElement_str_p->size()-1- atPosIndex < predictedLength.min )
 					return -1;	//we cant fit another redo
-				if( atPosIndex> maxPosOfFind_full )
+				if( atPosIndex>= maxPosOfFind_full )
 					return -1;	//we cant go that far
 			} else {	//we are done, we have min
 				break;	//just break the loop
@@ -1845,7 +2065,7 @@ size_t fafikLib_regex::item_match_anyOfChars::tryTest_backward(item_posIO& item_
 				it_IO.matchingAmount= 0;
 				if( atPosIndex < predictedLength.min )
 					return -1;	//we cant fit another redo
-				if( atPosIndex< maxPosOfFind_full )
+				if( atPosIndex<= maxPosOfFind_full )
 					return -1;	//we cant go that far
 			} else {	//we are done, we have min
 				break;	//just break the loop
@@ -1988,39 +2208,38 @@ int fafikLib_regex::item_match_anyOneOfText::tryTest_forward_str(item_posIO& ite
 
 	while(true) {
 		it_IO.find_res= it_IO.boundString.find( match_str, it_IO.findFrom );
-		if( it_IO.find_res!= wxString::npos ) {
-			it_IO.findFrom= it_IO.find_res +1;
-			it_IO.find_res_plusBegin= it_IO.boundStr_startPos+ it_IO.find_res;
-		  //save start pos for next find
-			it_IO.next_pos_start_begin= it_IO.find_res_plusBegin+ match_str.size();
-		} else {	//not found
+		if( it_IO.find_res== wxString::npos )
+			return hitTest_failedMatch;	//not found
+	  //found
+		it_IO.findFrom= it_IO.find_res +1;
+		it_IO.find_res_plusBegin= it_IO.boundStr_startPos+ it_IO.find_res;
+	  //save start pos for next find
+		it_IO.next_pos_start_begin= it_IO.find_res_plusBegin+ match_str.size();
+
+	  //not found at all (continue; above needed), if
+		if( it_IO.find_res_plusBegin== wxString::npos )
+			return hitTest_failedMatch;
+		item_returns.found_pos_from= it_IO.find_res_plusBegin;
+		item_returns.found_pos_to= it_IO.find_res_plusBegin+ match_str.size()-1;
+	  //ok found, but where?
+		if( item_returns.found_pos_to > maxPosFin ){
+			return hitTest_failedMatch;	//found out of scope (too far)
+		}
+		else if( item_returns.found_pos_to < DPosFromFin ){
+			continue;	//found too soon
+		}
+		 //found at somewhat good pos
+		item_posIO_store.pos_start_begin= it_IO.next_pos_start_begin;
+		if( item_returns.found_pos_from > maxMaxPosOfEnd ){	//found out of range, --error
 			return hitTest_failedMatch;
 		}
-
-		if( it_IO.find_res_plusBegin!= wxString::npos ){
-			item_returns.found_pos_from= it_IO.find_res_plusBegin;
-			item_returns.found_pos_to= it_IO.find_res_plusBegin+ match_str.size()-1;
-		  //ok found, but where?
-			if( item_returns.found_pos_to > maxPosFin ){
-				return hitTest_failedMatch;	//found out of scope (too far)
-			} else if( item_returns.found_pos_to < DPosFromFin ){
-				continue;	//found too soon
-			}
-			 //found at somewhat good pos
-			item_posIO_store.pos_start_begin= it_IO.next_pos_start_begin;
-			if( item_returns.found_pos_from > maxMaxPosOfEnd ){	//found out of range, --error
-				return hitTest_failedMatch;
-			}
-			else if( item_returns.found_pos_from > maxPosOfEnd ) {	//found but at bad? pos, --recheck
-				  //save that max pos of find
-				item_posIO_store.reverseFind= it_IO.find_res_plusBegin;
-				return hitTest_failedPartially_checkBackwards;
-			}
-			  //found, at good pos, --ok
-			return hitTest_ok;
+		else if( item_returns.found_pos_from > maxPosOfEnd ) {	//found but at bad? pos, --recheck
+			  //save that max pos of find
+			item_posIO_store.reverseFind= it_IO.find_res_plusBegin;
+			return hitTest_failedPartially_checkBackwards;
 		}
-		 //not found at all (continue; above needed), if
-		return hitTest_failedMatch;
+		  //found, at good pos, --ok
+		return hitTest_ok;
 	}
 return hitTest_failedMatch;
 }
@@ -2035,41 +2254,39 @@ int fafikLib_regex::item_match_anyOneOfText::tryTest_backward_str(item_posIO& it
 
 	while(true) {
 		it_IO.find_res= it_IO.boundString.rfind( match_str, it_IO.findFrom );
-		if( it_IO.find_res!= wxString::npos ) {
-			it_IO.findFrom= it_IO.find_res -1;
-			it_IO.find_res_plusBegin= it_IO.boundStr_startPos+ it_IO.find_res;
-		  //save start pos for next find
-			it_IO.next_pos_start_begin= it_IO.find_res_plusBegin-1;// match_str.size() +1;
-		} else {	//not found
+		if( it_IO.find_res== wxString::npos )
+			return hitTest_failedMatch;	//not found
+		it_IO.findFrom= it_IO.find_res -1;
+		it_IO.find_res_plusBegin= it_IO.boundStr_startPos+ it_IO.find_res;
+	  //save start pos for next find
+		it_IO.next_pos_start_begin= it_IO.find_res_plusBegin-1;// match_str.size() +1;
+
+		 //not found at all (continue; above needed), if
+		if( it_IO.find_res_plusBegin== wxString::npos )
+			return hitTest_failedMatch;
+		item_returns.found_pos_from= it_IO.find_res_plusBegin;
+		item_returns.found_pos_to= it_IO.find_res_plusBegin+ match_str.size()-1;
+		if(match_str.empty())	//or no string at all
+			item_returns.found_pos_to= item_returns.found_pos_from;
+	  //ok found, but where?
+		if( item_returns.found_pos_from < maxPosFin ){
+			return hitTest_failedMatch;	//found out of scope (too far)
+		}
+		else if( item_returns.found_pos_from > DPosFromFin ){
+			continue;	//found too soon
+		}
+		 //found at somewhat good pos
+		item_posIO_store.pos_start_begin= it_IO.next_pos_start_begin;
+		if( item_returns.found_pos_to < maxMaxPosStart ){	//found out of range, --error
 			return hitTest_failedMatch;
 		}
-
-		if( it_IO.find_res_plusBegin!= wxString::npos ){
-			item_returns.found_pos_from= it_IO.find_res_plusBegin;
-			item_returns.found_pos_to= it_IO.find_res_plusBegin+ match_str.size()-1;
-			if(match_str.empty())	//or no string at all
-				item_returns.found_pos_to= item_returns.found_pos_from;
-		  //ok found, but where?
-			if( item_returns.found_pos_from < maxPosFin ){
-				return hitTest_failedMatch;	//found out of scope (too far)
-			} else if( item_returns.found_pos_from > DPosFromFin ){
-				continue;	//found too soon
-			}
-			 //found at somewhat good pos
-			item_posIO_store.pos_start_begin= it_IO.next_pos_start_begin;
-			if( item_returns.found_pos_to < maxMaxPosStart ){	//found out of range, --error
-				return hitTest_failedMatch;
-			}
-			else if( item_returns.found_pos_to < maxPosStart ) {	//found but at bad? pos, --recheck
-				  //save that max pos of find
-				item_posIO_store.reverseFind= it_IO.find_res_plusBegin;
-				return hitTest_failedPartially_checkBackwards;
-			}
-			  //found, at good pos, --ok
-			return hitTest_ok;
+		else if( item_returns.found_pos_to < maxPosStart ) {	//found but at bad? pos, --recheck
+			  //save that max pos of find
+			item_posIO_store.reverseFind= it_IO.find_res_plusBegin;
+			return hitTest_failedPartially_checkBackwards;
 		}
-		 //not found at all (continue; above needed), if
-		return hitTest_failedMatch;
+		  //found, at good pos, --ok
+		return hitTest_ok;
 	}
 return hitTest_failedMatch;
 }
@@ -2111,9 +2328,10 @@ bool fafikLib_regex::item_match_anyOneOfText::_sortStrings(const wxString& item_
 
  //class fafikLib_regexVector_file, from this point
 
-int fafikLib_regexVector_file::testPath( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tracker* O_canSkippDirs) const
+int fafikLib_regexVector_file::testPath( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tracker* O_canSkippDirs, fafikLib_regex::resultHashInfo* resultHashInfo_o) const
 {
-	if(this->empty()) return fafikLib_regex::testReturns_noMatch;
+	if(this->empty())
+		return fafikLib_regex::testReturns_noMatch;
 	 //if is Include && has a fileType but does not match this filter
 	if(type_isInclude && fileAttribs && !fafikLib_regex::isMatchingAttribFile_dir(fileAttribs, type_FileAttribs) ){
 		//we got attrib.File but we were expecting ONLY attrib.Dir (or reverse)
@@ -2122,6 +2340,8 @@ int fafikLib_regexVector_file::testPath( const wxArrayString& PathInParts, const
 	if(O_canSkippDirs) O_canSkippDirs->resize(this->size());
 	int gotResTemp= 0;
 	size_t tempAtPos= 0;
+	fafikLib_regex::resultPosition resultPos;
+	fafikLib_regex::resultPosition* resultPos_passOn= nullptr;
 	bool canSkipp_thoseDirs= false;
 	if( O_canSkippDirs== nullptr ) canSkipp_thoseDirs= SamePath;
 
@@ -2129,9 +2349,16 @@ int fafikLib_regexVector_file::testPath( const wxArrayString& PathInParts, const
 		if(SamePath && O_canSkippDirs){
 			canSkipp_thoseDirs= O_canSkippDirs->at(tempAtPos);
 		}
-		gotResTemp= (*tempIt)->testPath(PathInParts, fileAttribs, canSkipp_thoseDirs, this->type_isInclude, O_canSkippDirs? &O_canSkippDirs->at(tempAtPos) : nullptr);	//test against all Lines
+		resultPos_passOn= nullptr;
+		if(resultHashInfo_o && (*tempIt)->hasHash()) resultPos_passOn= &resultPos;
+		gotResTemp= (*tempIt)->testPath(PathInParts, fileAttribs, canSkipp_thoseDirs, this->type_isInclude, O_canSkippDirs? &O_canSkippDirs->at(tempAtPos) : nullptr, resultPos_passOn);	//test against all Lines
 		++tempAtPos;
 		if(gotResTemp== fafikLib_regex::hitTest_match){	//if matches
+		  //process #Hash
+			if(resultHashInfo_o && resultPos_passOn){
+				resultHashInfo_o->HashPart= (*tempIt)->getHashPart(PathInParts, resultPos_passOn, &(resultHashInfo_o->Hash_type) );
+			}
+		  //return a hit
 			if(type_isInclude)
 				return fafikLib_regex::testReturns_isIncluded;	//result= copy/include this file
 			return fafikLib_regex::testReturns_isExcluded;		//result= skip this file
@@ -2152,31 +2379,36 @@ bool fafikLib_regexVector_file::testPath_copies( const wxArrayString& PathInPart
 
  //class fafikLib_regexMultipleFiles, from this point
 
-bool fafikLib_regexMultipleFiles::testPath_doCopy( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tr_PerPath* storageCanSkipp) const
+bool fafikLib_regexMultipleFiles::testPath_doCopy( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tr_PerPath* storageCanSkipp, fafikLib_regex::resultHashInfo* resultHashInfo_o) const
 {
 	 ///do treat non matching elements as not Included (that means Skip)
-	BYTE treatThisAsInclude= false;
+	bool treatThisAsInclude= false;
+	 ///item is Include but it might get excluded by following rules (on 2022-10-30)
+	bool treatThisAsInclude_Final= false;
 	int retState_curr= 0;
 	 ///keeping track of current item is faster then recalculating it from iter-offset-position
 	size_t itemAtPos= 0;
 	if(storageCanSkipp) storageCanSkipp->resize(filesToProcess.size());
 
 	for(const_iterator itemIt= begin(); itemIt!= end(); ++itemIt){	//iterate through all files
-		retState_curr= (*itemIt)->testPath(PathInParts, fileAttribs, SamePath, storageCanSkipp ? &storageCanSkipp->at(itemAtPos) : nullptr );	//test
+		if( treatThisAsInclude && (*itemIt)->isInclude() ) //skip another layer of include(already included)
+			continue;
+		retState_curr= (*itemIt)->testPath(PathInParts, fileAttribs, SamePath, storageCanSkipp ? &storageCanSkipp->at(itemAtPos) : nullptr, resultHashInfo_o );	//test
 		++itemAtPos;
 		if(retState_curr){ //we have matched something
 			if(retState_curr== fafikLib_regex::testReturns_include_INVALID){
 				continue;	//thats INVALID result
 			}
 			if(retState_curr== fafikLib_regex::testReturns_isIncluded)
-				return true;	//include ==> copy
+				treatThisAsInclude_Final= true;	//include ==> copy
 			if(retState_curr== fafikLib_regex::testReturns_isExcluded)
-				return false;	//exclude ==> skip
+				return false;					//exclude ==> skip
 		}
 		 //if we got to here check if this Rule file is include
 		if( (*itemIt)->type_isInclude ) treatThisAsInclude= true;
 	}
 
+	if(treatThisAsInclude_Final) return true; //include ==> copy
 	if(treatThisAsInclude) return false; //we did not match a result(and at least 1 Rule File is Including this type of fileAttribs) means ==> skip
 	return true;
 }

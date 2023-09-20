@@ -3,6 +3,7 @@
 
 #include "fafikLib/wxStringInputStream.h"
 #include "fafikLib/Byte_LL.h"
+#include "FileType_MDFC.h"	//_FileType_MDFC_Checksum
 #include <algorithm>
 
  ///RegPath the advanced regex for File Paths
@@ -59,6 +60,11 @@ class fafikLib_regex
 		item_processes_AnyOfChars,
 		 ///advanced "{ ?, "":i or :s, ... }" any of exact strings ==regex (text|txt)
 		item_processes_AnyOneOfText,
+
+		 ///Hash mask
+		item_processes_xHashMask= 256,
+		 ///advanced "{[0-9A-Fa-f],8,8, #crc32}" any in range ==regex [A-Z], only specified Case, #Hash included //2023-09-08
+		item_processes_AnyOfChars_Hash= 256| item_processes_AnyOfChars,
 	};
 	 ///max 8 entries
 	enum e_options_bit {
@@ -77,7 +83,29 @@ class fafikLib_regex
 	 ///@return & ANY file, or & directory
 	 ///as dumb as Windows is this function tests if given attribs match the mask being either: a folder or ANY file
 	static bool isMatchingAttribFile_dir(const DWORD &fileAttribs, const DWORD &mask_testAttribs);
-	 ///TODO: i might add an PathElement-name #length limiter
+	struct resultHashInfo {
+		wxString HashPart;
+		_FileType_MDFC_Checksum Hash_type= _FileType_MDFC_Checksum_none;
+	};
+	struct resultPosition_it {
+		unsigned short pos_from= 0;
+		unsigned short pos_to= -1;
+		 ///@see item_processes for info like: is star, is literal
+		unsigned short type_processes= 0;
+		 ///@see _FileType_MDFC_Checksum
+		unsigned short Hash_type= _FileType_MDFC_Checksum_none;
+		resultPosition_it() {}
+		resultPosition_it(unsigned short pos_from, unsigned short pos_to): pos_from(pos_from), pos_to(pos_to) {}
+		unsigned short size() const {if(pos_to== (unsigned short)-1u)return -1; return (pos_to- pos_from) +1;}
+		unsigned short length() const {if(pos_to== (unsigned short)-1)return -1; return (pos_to- pos_from) +1;}
+		bool isAnyChar()const {return type_processes==item_processes_Star || type_processes==item_processes_AnyChar;}
+		bool isLiteral()const {return type_processes==item_processes_String || type_processes==item_processes_AnyOneOfText; }
+		bool isText()const {return isLiteral();}
+		bool isHash()const {return type_processes & item_processes_xHashMask;}
+	};
+	typedef wxVector<resultPosition_it> resultPosition_part;
+	 ///pos_from and pos_to are both inclusive <b>[from, to]</b> not [from, to)
+	typedef wxVector<resultPosition_part> resultPosition;
 	struct PathElement_len_limiter{
 		unsigned short min= 0;
 		unsigned short max= -1;
@@ -231,6 +259,8 @@ class fafikLib_regex
 
 		 ///this stores the type to be processed
 		unsigned short type_processes= item_processes_none;
+		 ///stores type of Hash
+		_FileType_MDFC_Checksum HashType= _FileType_MDFC_Checksum_none;
 		 ///store how many wxChars we need at least, "file*name"= 8, and at most = -1
 		 ///@derivedClass has to fill this in
 		PathElement_len_limiter predictedLength;
@@ -354,6 +384,7 @@ class fafikLib_regex
 	 protected:
 		size_t tryTest_forward(item_posIO& item_posIO_store, item_posFoundO& item_returns, items_tempStore& it_IO) const;
 		size_t tryTest_backward(item_posIO& item_posIO_store, item_posFoundO& item_returns, items_tempStore& it_IO) const;
+		 ///@return true if current char is in range
 		inline bool tryTestChar(const wxUniChar &atPosChar) const;
 	};
 	 ///this will match any of specified Text, from longest to shortest
@@ -431,6 +462,9 @@ class fafikLib_regex
 		inline unsigned short getDepthStart(unsigned short dirsIn) const { if(is_rooted)return 0; if(dirsIn<amount_dirs)return 0; return dirsIn- amount_dirs; } //we cant go negative dirs, so always make sure its a positive
 		inline bool canTest( unsigned short dirsIn ) const {if(is_rooted && dirsIn== amount_dirs) return true; if(!is_rooted && dirsIn>= amount_dirs) return true; return false; }
 		inline bool canTest_includeFolder( unsigned short dirsIn ) const {if(is_rooted && dirsIn> amount_dirs) return false; return true; }
+		inline bool hasHash() const { return has_hash; }
+		inline bool hasChecksum() const { return has_hash; }
+		_FileType_MDFC_Checksum getHashType() const;
 	 //main functions, like start, and Try
 		 ///main function to parse input string version into machines
 		int setPattern( const wxString& strPattern );
@@ -450,6 +484,8 @@ class fafikLib_regex
 		wxVector<item_base_pathParts> items_pathParts;	//splits above into path parts "*/", "*/", "file..."
 		 ///whether or not the item has to be at precise depth
 		bool is_rooted= false;
+		 ///if #Hash like #crc32 is present
+		bool has_hash= false;
 		 ///this determines CaseSense, include/exclude on found
 		bool8 optionsMask= 0;
 		 ///how many levels of Dirs does this item need (file counts too)
@@ -527,6 +563,10 @@ class fafikLib_regex
  	int setPattern_advanced_enter(pattern_store_struct& pattern_storeS);
 	   ///finds the next ',;', the pos is just after that char(not it) @return e_setPattern_advanced_errors
  	  int setPattern_advanced_findNext_separated(pattern_store_struct& pattern_storeS);
+	   ///finds the next '#', the pos is just after that char(not it) @return e_setPattern_advanced_errors
+	   ///@return 0= ok found can extract Hash info, 1-3= error not found
+ 	  int setPattern_advanced_findNext_hash(pattern_store_struct& pattern_storeS);
+ 	   _FileType_MDFC_Checksum setPattern_advanced_findNext_hashProcess(const pattern_store_struct& pattern_storeS);
  	   ///@return 0= not found(up to separator char, or EOL), 1= LL, 2= Double with dot, 3= Double with coma
  	  int setPattern_advanced_findNumberStr(pattern_store_struct& pattern_storeS, BYTE find_dot_forDouble= false);
  	   ///@return e_setPattern_advanced_errors
@@ -543,8 +583,9 @@ class fafikLib_regex
  	int setPattern_advanced_anyOneOfText(pattern_store_struct& pattern_storeS);
  	   //
  	  int extractQuotedText(pattern_store_struct& pattern_storeS, wxString &outputStrFull);
+	int copyPos_StartEnd_toResult(const wxVector<item_posFoundO>& inputVec, resultPosition_part& outputResult, const item_base_pathParts& context_itemBasePP)const;
 
-	int testPathPart( const item_base_pathParts& namedP, itemPath_tempStore& itPath_IO ) const;
+	int testPathPart( const item_base_pathParts& namedP, itemPath_tempStore& itPath_IO, resultPosition_part* resultPos_part=nullptr ) const;
 	int testPath_forward( const item_base_pathParts& namedP, itemPath_tempStore& itPath_IO ) const;
 	int testPath_backward( const item_base_pathParts& namedP, itemPath_tempStore& itPath_IO ) const;
 	int testPath_withHints( const item_base_pathParts& namedP, itemPath_tempStore& itPath_IO ) const;
@@ -579,15 +620,24 @@ class fafikLib_regex
 		///@param const wxArrayString& PathInParts -takes in path relative to the source.root
 		///@param fileAttribs -provide file attributes whether its a file/folder
 		///@param bool SamePath -set this to skip processing of parentDirectories of item
+		///@param bool isIncludeMode -it will report back include error instead of exclude error
+		///@param (canSkippSomeDirs* O_canSkippDirs) -keep this to skip processing of already matched path part
+		///@param (resultPosition* <b>resultPos</b>) -retrieve result of match, size based on Template not on provided path
 		///the main part of the regex	--array separated parts of path edition
-	int testPath( const wxArrayString& PathInParts, const DWORD &fileAttribs, const bool& SamePath=false, const bool& isIncludeMode=false, canSkippSomeDirs* O_canSkippDirs=nullptr) const;
+	int testPath( const wxArrayString& PathInParts, const DWORD &fileAttribs, const bool& SamePath=false, const bool& isIncludeMode=false, canSkippSomeDirs* O_canSkippDirs=nullptr, resultPosition* resultPos=nullptr) const;
 		///@return hitTest_returns:: @see fafikLib_regex::hitTest_returns
-	inline int testPath( const wxString& PathAsString, const DWORD &fileAttribs, const bool& isIncludeMode=false ) const {
+	inline int testPath( const wxString& PathAsString, const DWORD &fileAttribs, const bool& isIncludeMode=false, resultPosition* resultPos=nullptr ) const {
 		wxArrayString pathInParts;
 		separatePath(PathAsString, pathInParts);
-		return testPath( pathInParts, fileAttribs, false, isIncludeMode );
+		return testPath( pathInParts, fileAttribs, false, isIncludeMode, nullptr, resultPos );
 	}
 
+	 ///gets Hash string from file name (eg. "The Movie [01AB]" => "01AB".crc16) that was specified in regpath	//2023-09-08
+	 ///@return @b wxString of Hash part AND @b HashType_o info of Hash Type = @see _FileType_MDFC_Checksum
+	static wxString getHashPart(const wxArrayString& PathInParts, const resultPosition* resultPos, _FileType_MDFC_Checksum* HashType_o );
+
+	inline bool hasHash() const {return regex_item.hasHash();}
+	inline _FileType_MDFC_Checksum getHashType() const {return regex_item.getHashType();}
 	inline DWORD Get_File_Attribs() const {return regex_item.FileType;}
 	 ///@return @see fafikLib_regex::hitTest_returns
 	inline int Get_errorCode() const {return i_lastErrorCode;}
@@ -628,13 +678,35 @@ class fafikLib_regexVector_file: public wxVector<fafikLib_regex*>
 	};
 	fafikLib_regexVector_file(bool includeMode=false, bool CaseSensitiveMode=false): type_isInclude(includeMode), type_caseSensitive(CaseSensitiveMode) {}
 	 ///@return errorCode
-	int AddItem( const wxString& strPattern, DWORD FileAttribs_type, BYTE override_caseSensitive= -1, bool silenceWarns=false ){
+	 ///@param silenceWarns: &1 silence error, &2 silence #Hash type info
+	int AddItem( const wxString& strPattern, DWORD FileAttribs_type, BYTE override_caseSensitive= -1, BYTE silenceWarns= -1 ){
 		type_FileAttribs|= FileAttribs_type;
 		if( override_caseSensitive== BYTE(-1) )
 			override_caseSensitive= type_caseSensitive;
 		fafikLib_regex* tempItem= new fafikLib_regex(strPattern, !override_caseSensitive, FileAttribs_type);
 		push_back( tempItem );
-		if( tempItem->Get_errorCode() && !silenceWarns ){
+		if(tempItem->hasHash() && !(silenceWarns&2) ){
+			_FileType_MDFC_Checksum type= tempItem->getHashType();
+			switch (type)
+			{
+			 case _FileType_MDFC_Checksum_MD2: wxLogMessage("Hash Type: MD2"); break;
+			 case _FileType_MDFC_Checksum_MD4: wxLogMessage("Hash Type: MD4"); break;
+			 case _FileType_MDFC_Checksum_MD6: wxLogMessage("Hash Type: MD6"); break;
+			 case _FileType_MDFC_Checksum_MD5: wxLogMessage("Hash Type: MD5"); break;
+			 case _FileType_MDFC_Checksum_SHA1: wxLogMessage("Hash Type: SHA1"); break;
+			 case _FileType_MDFC_Checksum_SHA2_224: wxLogMessage("Hash Type: SHA2 224"); break;
+			 case _FileType_MDFC_Checksum_SHA2_256: wxLogMessage("Hash Type: SHA2 256"); break;
+			 case _FileType_MDFC_Checksum_SHA2_384: wxLogMessage("Hash Type: SHA2 384"); break;
+			 case _FileType_MDFC_Checksum_SHA2_512: wxLogMessage("Hash Type: SHA2 512"); break;
+			 case _FileType_MDFC_Checksum_crc16: wxLogMessage("Hash Type: CRC 16"); break;
+			 case _FileType_MDFC_Checksum_crc32: wxLogMessage("Hash Type: CRC 32"); break;
+			 case _FileType_MDFC_Checksum_crc64: wxLogMessage("Hash Type: CRC 64"); break;
+			 default:
+				wxLogWarning("!Unknown Hash Type: %u", (unsigned)type );
+			 break;
+			}
+		}
+		if( tempItem->Get_errorCode() && !(silenceWarns&1) ){
 			wxLogError("Error Compiling Rule Line[%u] of File \"%s\"", this->size()-1, fileName );
 		}
 		return tempItem->Get_errorCode();
@@ -650,7 +722,7 @@ class fafikLib_regexVector_file: public wxVector<fafikLib_regex*>
 	 ///@return @see fafikLib_regex::testReturns
 	 ///@param SamePath & O_canSkippDirs are linked together if there is one only one will act, if both are set then they will act together
 	 ///processed result call to each item
-	int testPath( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tracker* O_canSkippDirs=nullptr) const;
+	int testPath( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tracker* O_canSkippDirs=nullptr, fafikLib_regex::resultHashInfo* resultHashInfo_o=nullptr) const;
 
   //easy access
 	 ///@return false =Skip, true =Copy
@@ -659,6 +731,10 @@ class fafikLib_regexVector_file: public wxVector<fafikLib_regex*>
 
 	inline void Set_CaseSensitive(bool CaseSensitiveMode) { type_caseSensitive= CaseSensitiveMode; }
 	inline void Set_Include(bool includeMode) { type_isInclude= includeMode; }
+	bool isInclude() const {return type_isInclude;}
+	bool isExclude() const {return !type_isInclude;}
+	bool isCaseSensitive() const {return type_caseSensitive;}
+	bool isCaseInSensitive() const {return !type_caseSensitive;}
 };
 
 	///this class is to be used only for massive checking
@@ -684,7 +760,7 @@ class fafikLib_regexMultipleFiles {
 	inline void Add_RuleFile_entry(const fafikLib_regexVector_file* ruleFileEntry) {filesToProcess.push_back(ruleFileEntry);}
 	 ///@return false =Skip, true =Copy
 	 ///gives a bool response: Skip or Copy
-	bool testPath_doCopy( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tr_PerPath* storageCanSkipp= nullptr) const;
+	bool testPath_doCopy( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tr_PerPath* storageCanSkipp= nullptr, fafikLib_regex::resultHashInfo* resultHashInfo_o=nullptr) const;
 
 	 ///its not automatic, you have to call it, or request it when creating the class
 	size_t DeleteAll();
