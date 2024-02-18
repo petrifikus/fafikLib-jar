@@ -1,8 +1,19 @@
 #include "f77_helpers.h"
+#include <wx/sizer.h>
 #include "ReplaceALL.h"
 
 bool app_creation_info::app_runby_Admin= false;
 bool app_creation_info::app_SE_RESTORE_NAME= false;
+
+
+wxStringVector::iterator wxStringVector::find(const wxString& item)
+{
+	for(iterator itemIter= begin(); itemIter!= end(); ++itemIter){
+		if(item== (*itemIter) )
+			return itemIter;
+	}
+	return end();
+}
 
 wxColour_F77::wxColour_F77(const std::string& ColorHex)
 {
@@ -89,6 +100,20 @@ wxString PathFormatToWindowsLongPath_f77(const wxString& path)
 	return retStr;
 }
 
+wxStringVector PathToArray(const wxString& path)
+{
+	wxStringVector items;
+	size_t posBS= 0;
+	size_t posBSOld= 0;
+	do {
+		posBS= path.find_first_of("/\\", posBS+1);
+		items.push_back( path.SubString(posBSOld, posBS-1) );
+		if(items.back().empty()) items.pop_back();
+		posBSOld= posBS+1;
+	}while( posBS!= wxString::npos );
+	return items;
+}
+
  ///convert [in] @b data to Hex format (lower case)
 std::string toHex(const void* const data, size_t sizeData, bool reverse)
 {
@@ -125,5 +150,40 @@ void wxTextEntryDialog_seekable::SetInsertionPointEnd()
 void wxTextEntryDialog_seekable::SetInsertionPoint(long pos)
 {
 	m_textctrl->SetInsertionPoint(pos);
+}
+void wxTextEntryDialog_seekable::SetFontRec(const wxFont &font, wxSizer* fromSizer)
+{
+	if(!fromSizer) fromSizer= this->GetSizer();
+	for( auto& eachItem : fromSizer->GetChildren() ){
+		wxWindow* asWindow= (wxWindow*) eachItem->GetWindow();
+		if(asWindow)
+			asWindow->SetFont(font);
+		wxSizer* asSizer= eachItem->GetSizer();
+		if(asSizer)
+			this->SetFontRec(font, asSizer);
+	}
+	fromSizer->Fit(this);
+	fromSizer->SetSizeHints(this);
+	fromSizer->Layout();
+}
+
+void SetFontRecSizer(const wxFont &font, wxWindow* fromSizerWindow, wxSizer* fromSizer)
+{
+	if(!fromSizerWindow && !fromSizer) return;
+	if(!fromSizer) fromSizer= fromSizerWindow->GetSizer();
+	if(!fromSizer) return;
+	for( auto& eachItem : fromSizer->GetChildren() ){
+		wxWindow* asWindow= (wxWindow*) eachItem->GetWindow();
+		if(asWindow)
+			asWindow->SetFont(font);
+		wxSizer* asSizer= eachItem->GetSizer();
+		if(asSizer)
+			SetFontRecSizer(font, nullptr, asSizer);
+	}
+	if(fromSizerWindow){
+		fromSizer->Fit(fromSizerWindow);
+		fromSizer->SetSizeHints(fromSizerWindow);
+	}
+	fromSizer->Layout();
 }
 

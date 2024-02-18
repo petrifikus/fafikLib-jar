@@ -30,7 +30,6 @@ void wxStringInputStream::LoadDefChars()
 	Chars_break.push_back( '\t' );
 	Chars_break.push_back( '\n' );
 
-
 	for( char temp_c='0'; temp_c<='9'; temp_c++ ){
 		Chars_digits.push_back( temp_c );
 	}
@@ -63,14 +62,29 @@ void wxStringInputStream::inputString(wxString *str)
 }
 wxStringInputStream& wxStringInputStream::operator>>(wxString &str)
 {
-	if(this->pos_curr> this->size() ) this->lastError= -1;
+	get_Line(str);
+	return (*this);
+}
+bool wxStringInputStream::get_Line( wxString &out )
+{
+	out.clear();
+	if(this->pos_curr> this->size() ){
+		this->lastError= -1;
+		return false;
+	}
 	size_t pos_from= this->str_iStr->find_first_not_of( Chars_break, this->pos_curr );
-	size_t pos_to= this->str_iStr->find_first_of( Chars_break, pos_from );
+	size_t pos_to= this->str_iStr->find_first_of( Chars_break, this->pos_curr );
+	if(pos_from> pos_to){
+		out.clear();
+		this->pos_curr= pos_to+1;
+		return true;
+	}
 	if( pos_to==size_t(-1) ) pos_to= this->str_iStr->size();
-	this->pos_curr= pos_to;
+	this->pos_curr= pos_to+1;
 
-	str= this->str_iStr->SubString( pos_from, pos_to-1 );
-return (*this);
+	out= this->str_iStr->SubString( pos_from, pos_to-1 );
+
+	return true;
 }
 ///in 0 +num, 1 +-num, 2|3 +-float.num
 wxString wxStringInputStream::get_numberRawStr(BYTE dot_float)
@@ -198,13 +212,12 @@ wxStringInputStream& wxStringInputStream::operator>>(long long &out)
 return (*this);
 }
 
-wxArrayString wxStringInputStream::getPathSerialized()const
+wxStringVector wxStringInputStream::getPathSerialized()const
 {
 	std::string path_seps= "/\\";
 	size_t pos_start= 0;
 	size_t pos_found= 0;
-	wxArrayString ret_arr;
-//	size_t size_ti(-1);
+	wxStringVector ret_arr;
 
 	while( pos_found!= wxString::npos )
 	{
@@ -231,8 +244,8 @@ wxString wxStringInputStream::getPathRelativeTo(const wxStringInputStream& relat
 		return ret_path_new;	//already relative
 	}
 
-	wxArrayString temp_cwd_arr= relative_to.getPathSerialized();
-	wxArrayString temp_path_arr= this->getPathSerialized();
+	wxStringVector temp_cwd_arr= relative_to.getPathSerialized();
+	wxStringVector temp_path_arr= this->getPathSerialized();
 
 	size_t temp_pos= 0;
 	size_t temp_matching= 0;

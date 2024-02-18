@@ -1,3 +1,6 @@
+/** \brief A simple spin ctrl that allows recalculations for Bytes(B, KB, MB, GB, TB)
+ *
+ */
 #ifndef BYTESCTRL_H_INCLUDED
 #define BYTESCTRL_H_INCLUDED
 //based on template from	https://forums.wxwidgets.org/viewtopic.php?t=29549
@@ -46,6 +49,9 @@ class wxTextCtrl_num : public wxTextCtrl
 	void RefreshNumber();
 };
 
+/** \brief A simple spin ctrl that allows recalculations for Bytes(B, KB, MB, GB, TB)
+ *
+ */
 class BytesCtrl : public wxPanel, public LoadCfg_call
 {
  public:

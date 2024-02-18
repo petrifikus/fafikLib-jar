@@ -1,6 +1,12 @@
+/** @brief lets you extract parts from input string
+*
+*/
+
 #ifndef WXSTRINGINPUTSTREAM_H
 #define WXSTRINGINPUTSTREAM_H
 
+#include <wx/app.h>
+#include "f77_helpers.h"
 
 class wxStringInputStream
 {
@@ -12,15 +18,14 @@ class wxStringInputStream
 	wxStringInputStream(wxString *str);
 	virtual ~wxStringInputStream();
 
-		///set char to be separator of "number.float"
-	wxString floatDotChar= '.';
-
 
 		///copy
 	void inputString(const wxString &str);
 		///pointer original(mainly long strings)
 	void inputString(wxString *str);
+		///copy
 	void setString(const wxString &str){inputString(str);}
+		///pointer original(mainly long strings)
 	void setString(wxString *str){inputString(str);}
 	wxStringInputStream& operator=(const wxString &str);
 
@@ -43,12 +48,14 @@ class wxStringInputStream
 	bool get_Number( long &out );
 	bool get_Number( long long &out );
 	bool get_Number( double &out );
+	bool get_Line( wxString &out );
 
 	wxStringInputStream& operator>>(char &char_here);
 	wxStringInputStream& operator>>(wxUniChar &char_here);
 
 		///@return string containing digits
 	wxString get_numberRawStr(){ return get_numberRawStr(0); }
+		///@return string containing digits, minus
 	wxString get_numberSignedRawStr(){ return get_numberRawStr(1); }
 		///@return string containing digits,minus,dot
 	wxString get_numberFloatRawStr(){ return get_numberRawStr(3); }
@@ -68,69 +75,38 @@ class wxStringInputStream
 		///@param 1 no number
 		///@param -1 string end
 	int get_lastError()const { return lastError; };
-	wxArrayString getPathSerialized()const;
-		///@param relative_to has to be a full path, use `wxGetCwd()`
+	wxStringVector getPathSerialized()const;
+		///@param relative_to has to be a full path, use wxGetCwd()/getAppPath
 	wxString getPathRelativeTo(const wxStringInputStream& relative_to)const;
 
-		///Space Tab, editable
+	 ///change the delimiters for string extraction
+	void setDelimiter(const std::string& delims){Chars_break= delims;}
+	 ///changes the '.' for float conversion into one of separators chars
+	void setFloatSeparators(const wxString& separators){floatDotChar= separators;}
+
+ //data
+	 ///Space Tab NewLine, editable
 	std::string Chars_break;
+	 ///set char to be separator of "number.float"
+	wxString floatDotChar= '.';
  protected:
-		/// from 0 to 9 and '-'
+	 /// from 0 to 9 and '-'
 	std::string Chars_digits;
-//	///and '.'
-//	std::string Chars_digitsF;
-	void LoadDefChars();
 
 	size_t pos_curr= 0;
 	wxString *str_iStr= nullptr;
 	bool str_iOwnCopy= false;
 	int lastError= 0;
 
-	///private, look at 2nd one
+	 ///private, look at 2nd one
 	wxString get_numberRawStr(BYTE dot_float);
+	void LoadDefChars();
  private:
 };
 
-///@param B isSignFloat : 0= unsigned, 1=signed, 2=float
-template<class Tnume> class wxStringToNumber
-{
- bool _success= 0;
- public:
- 	Tnume stores= 0;
- 	BYTE isSignFloat= 0;
-
- 	Tnume setNumber(const wxString& inStr);
- 	Tnume getNumber()const{return stores;}
- 	bool wasSuccess()const{return _success;}
- 	bool Error()const{return !_success;}
-
-	wxStringToNumber(){}
-	wxStringToNumber(const wxString& inStr, BYTE isSignFloat_= 0){
-		isSignFloat= isSignFloat_;
-		setNumber(inStr);
-	}
-
-	Tnume operator=(const wxString& inStr){return setNumber(inStr);}
 
 
-};
-template<class Tnume> Tnume wxStringToNumber<Tnume>::setNumber(const wxString& inStr)
-{
-	if(isSignFloat== 1){
-		long long toMe= 0;
-		_success =inStr.ToLongLong( &toMe );
-		if(_success) stores= toMe;
-	} else if(isSignFloat== 2){
-		double toMe= 0;
-		_success =inStr.ToDouble( &toMe );
-		if(_success) stores= toMe;
-	} else {	//	(0)
-		unsigned long long toMe= 0;
-		_success =inStr.ToULongLong( &toMe );
-		if(_success) stores= toMe;
-	}
-return stores;
-}
+
 
 
 #endif // WXSTRINGINPUTSTREAM_H

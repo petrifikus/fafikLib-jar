@@ -4,6 +4,8 @@
 
 #include <wx/msgqueue.h> //include the wx source
 
+namespace fafik77 {
+
 enum messageQueue_F77_Error
 {
     MSGQUEUE_F77_NO_ERROR= 0,	// operation completed successfully
@@ -12,6 +14,7 @@ enum messageQueue_F77_Error
     MSGQUEUE_F77_QUEUE_EMPTY,	// queue is empty
 };
 
+ ///task -message dispatcher to all registered workers, provided structure template has to have default empty ctor (that will be used for signaling EXIT msg) && copy-able
 template <typename T>
 class messageQueue_F77
 {
@@ -33,6 +36,9 @@ class messageQueue_F77
 		m_conditionNotEmpty.Signal();
 		return MSGQUEUE_F77_NO_ERROR;
 	}
+	 /// Add a message to this queue and signal the threads waiting for messages.
+	 /// This method is safe to call from multiple threads in parallel.
+	inline messageQueue_F77_Error Send(const Message& msg) {return Post(msg);}
 
 	 ///use this to signify an exit attempt, this will work only if queue() is empty
 	messageQueue_F77_Error Broadcast_exit()
@@ -156,4 +162,5 @@ class messageQueue_F77
 	std::queue<T>   m_messages;
 };
 
+}; //namespace
 #endif // MESSAGEQUEUE_F77_H

@@ -34,97 +34,89 @@ return Ocurence;
 }
 
 
-size_t replaceAll_notAfterStr(wxString &strInput,const wxString strFrom,const wxString strTo,const wxString notAfterStr, const size_t startPos, size_t MoveBy, const BYTE ValidWhenStrIs_2kPlus0)
+size_t replaceAll_notAfterStr(wxString &strInput,const wxString strFrom,const wxString strTo,const wxString notAfterStr, const size_t startPos, size_t MoveBy, const ValidWhenStrIs_2kPlus validWhen)
 {
 	if(MoveBy == size_t(-1)) MoveBy=strTo.Length();
 	size_t StartPos=startPos;
-	size_t Ocurence=0;
+	size_t Ocurence= 0;
 	while(StartPos!=wxString::npos)
 	{
-		StartPos = strInput.find(strFrom,StartPos);
-		if(StartPos!=wxString::npos){
-		 if(!notAfterStr.empty() ){
-		  if(ValidWhenStrIs_2kPlus0!=0 && ValidWhenStrIs_2kPlus0!=1){
-			wxString temp_str = strInput.SubString( StartPos-notAfterStr.Length(), StartPos-1 );
-			if( temp_str != notAfterStr ){
-				Ocurence++;
-				strInput.replace(StartPos,strFrom.Length(),strTo );
-				StartPos+=MoveBy;
-			} else {
-				StartPos++;
-			}
-		  } else {
+		StartPos= strInput.find(strFrom,StartPos);
+		if(StartPos==wxString::npos) return Ocurence;
+		if(notAfterStr.empty() ) return Ocurence;
+		  //if(validWhen!=0 && validWhen!=1){
+		if(validWhen!= ValidDontCare){	//either on pair or odd
 		  	size_t StartPos_back= StartPos;
 		  	size_t ocured=0;
 		  	wxString temp_str;
 		  	while(true){
 				temp_str = strInput.SubString( StartPos_back-notAfterStr.Length(), StartPos_back-1 );
-				if(temp_str != notAfterStr){
+				if(temp_str != notAfterStr)
 					break;
-				}
 				ocured++;
 				StartPos_back-= notAfterStr.Length();
-				if(StartPos_back>=notAfterStr.Length()){}
-				else break;
+				if( !(StartPos_back>=notAfterStr.Length()))
+					break;
 		  	}
-		  	if( ocured%2 == ValidWhenStrIs_2kPlus0){
+		  	if( (ocured&1) == (int)validWhen){
 				Ocurence++;
 				strInput.replace(StartPos,strFrom.Length(),strTo );
 				StartPos+=MoveBy;
-			} else {
-				StartPos++;
 			}
+			else
+				StartPos++;
 		  	//ok ?
-		  }
-		 }
-
+		}
+		else{	//dont care
+			wxString temp_str = strInput.SubString( StartPos-notAfterStr.Length(), StartPos-1 );
+			if( temp_str != notAfterStr ){
+				Ocurence++;
+				strInput.replace(StartPos,strFrom.Length(),strTo );
+				StartPos+=MoveBy;
+			}
+			else
+				StartPos++;
 		}
 	}
 return Ocurence;
 }
 
-size_t find_notAfterStr(wxString &strInput,const wxString strSearch,const wxString notAfterStr, const size_t startPos, const bool doOnlyOneCheck, const BYTE ValidWhenStrIs_2kPlus0)
+size_t find_notAfterStr(wxString &strInput,const wxString strSearch,const wxString notAfterStr, const size_t startPos, const bool doOnlyOneCheck, const ValidWhenStrIs_2kPlus validWhen)
 {
-	size_t StartPos=startPos;
+	size_t StartPos= startPos;
 	while(StartPos!=wxString::npos)
 	{
 		StartPos = strInput.find(strSearch,StartPos);
-		if(StartPos!=wxString::npos){
-		 if(!notAfterStr.empty() ){
-// TODO (main#9#07/28/18): ValidWhenStrIs_2kPlus0 change to occurrence
-		  if(ValidWhenStrIs_2kPlus0!=0 && ValidWhenStrIs_2kPlus0!=1){
-			wxString temp_str = strInput.SubString( StartPos-notAfterStr.Length(), StartPos-1 );
-			if( temp_str != notAfterStr ){
-				return StartPos;
-			} else {
-				StartPos++;
-			}
-		  } else {
+		if(StartPos==wxString::npos) return -1;
+		if(notAfterStr.empty() ) return -1;
+// TODO (main#9#07/28/18): validWhen change to occurrence
+		if(validWhen!= ValidDontCare){
 		  	size_t StartPos_back= StartPos;
 		  	size_t ocured=0;
 		  	wxString temp_str;
 		  	while(true){
 				temp_str = strInput.SubString( StartPos_back-notAfterStr.Length(), StartPos_back-1 );
-				if(temp_str != notAfterStr){
+				if(temp_str != notAfterStr)
 					break;
-				}
 				ocured++;
 				StartPos_back-= notAfterStr.Length();
-				if(StartPos_back>=notAfterStr.Length()){}
-				else break;
+				if( !(StartPos_back>=notAfterStr.Length()) )
+					break;
 		  	}
-		  	if( ((ocured &1)== ValidWhenStrIs_2kPlus0) || ocured==0){
+		  	if( ((ocured &1)== (int)validWhen) || ocured==0)
 				return StartPos;
-			} else {
+			else
 				StartPos++;
-			}
 		  	//ok ?
-		  }
-
-		 }
-
 		}
-	 if(doOnlyOneCheck) break;
+		else {
+			wxString temp_str = strInput.SubString( StartPos-notAfterStr.Length(), StartPos-1 );
+			if( temp_str != notAfterStr )
+				return StartPos;
+			else
+				StartPos++;
+		}
+		if(doOnlyOneCheck) break;
 	}
 return -1;
 }
@@ -142,16 +134,14 @@ size_t find_RestrictedString(const wxString &in_str, wxString find_str, const bo
 		if(inspec_pos>to_pos) return -1;
 
 		//size still to find
-		if( (to_posFind-validFinds) > (to_pos-inspec_pos) ){
+		if( (to_posFind-validFinds) > (to_pos-inspec_pos) )
 			return -1;
-		}
-
 
 		if( validFinds_nextPos== inspec_pos ){
 			//ok
-		} else {
-			validFinds= from_posFind;
 		}
+		else
+			validFinds= from_posFind;
 
 		if(CaseInsensitive){	//CaseInsensitive exclusive implementation
 			wxString inStr_1char( in_str.at(inspec_pos) );
@@ -167,7 +157,8 @@ size_t find_RestrictedString(const wxString &in_str, wxString find_str, const bo
 				validFinds_nextPos= inspec_pos+1;
 			}
 		}
-		if(validFinds>= to_posFind) return (inspec_pos- (to_posFind-from_posFind)+1 );
+		if(validFinds>= to_posFind)
+			return (inspec_pos- (to_posFind-from_posFind)+1 );
 	}
 return -1;
 }

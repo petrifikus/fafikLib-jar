@@ -1,15 +1,22 @@
 #ifndef REPLACEALL_H
 #define REPLACEALL_H
 
+#include <wx/app.h>
 
+enum ValidWhenStrIs_2kPlus{
+	ValidWhenPair,
+	ValidWhenOdd,
+	ValidWhenDontCare,
+	ValidDontCare=ValidWhenDontCare,
+};
 
 size_t replaceAll(wxString &strInput,const wxString strFrom,const wxString strTo,const size_t startPos=0, size_t MoveBy=0);
 
 size_t replaceAll(wxString *strInput,const wxString strFrom,const wxString strTo,const size_t startPos=0, size_t MoveBy=0);
-///ValidWhenStrIs_2kPlus0: 0 =2k+0(pair), 1 =2k+1(not pair)
-size_t replaceAll_notAfterStr(wxString &strInput,const wxString strFrom,const wxString strTo,const wxString notAfterStr, const size_t startPos=0, size_t MoveBy=-1, const BYTE ValidWhenStrIs_2kPlus0=-1);
-///ValidWhenStrIs_2kPlus0: 0 =2k+0(pair), 1 =2k+1(not pair)
-size_t find_notAfterStr(wxString &strInput,const wxString strSearch,const wxString notAfterStr, const size_t startPos=0, const bool doOnlyOneCheck=false, const BYTE ValidWhenStrIs_2kPlus0=-1);
+ ///ValidWhenStrIs_2kPlus0: 0 =2k+0(pair), 1 =2k+1(not pair)
+size_t replaceAll_notAfterStr(wxString &strInput,const wxString strFrom,const wxString strTo,const wxString notAfterStr, const size_t startPos=0, size_t MoveBy= -1, const ValidWhenStrIs_2kPlus validWhen= ValidDontCare);
+ ///ValidWhenStrIs_2kPlus0: 0 =2k+0(pair), 1 =2k+1(not pair)
+size_t find_notAfterStr(wxString &strInput,const wxString strSearch,const wxString notAfterStr, const size_t startPos=0, const bool doOnlyOneCheck=false, const ValidWhenStrIs_2kPlus validWhen= ValidDontCare);
 //size_t find_notAfterNAmStr(wxString &strInput,const wxString strSearch,const wxString notAfterStr, const size_t startPos=0, const bool doOnlyOneCheck=false, const BYTE nAmountOfStrForValid=0);
 
 //size_t fafikLib_StringRestrictedFind(const wxString &in_str, const wxString find_str, const bool CaseInsensitive= false, const size_t from_pos= 0, const size_t to_pos= -1);

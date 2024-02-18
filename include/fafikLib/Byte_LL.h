@@ -1,13 +1,16 @@
 #ifndef BYTE_LL_H
 #define BYTE_LL_H
 
+typedef unsigned char BYTE;
+
+#include <wx/string.h>
+
 ///a rip-out of class
 class FafikEC
 {
  public:
-
-		///plain static_cast
-		///convert LL into Byte*[ 8? ],
+	 ///plain static_cast
+	 ///convert LL into Byte*[ 8? ],
 	static BYTE* BytesP_fromLL( long long &from_LL );
 
 		///get min required bytes to write this value

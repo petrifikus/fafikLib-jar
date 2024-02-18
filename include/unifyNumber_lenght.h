@@ -1,18 +1,11 @@
 #ifndef UNIFYNUMBER_LENGHT_H
 #define UNIFYNUMBER_LENGHT_H
 
+#include <wx/app.h>
 
-class unifyNumber_lenght
-{
-	public:
-		unifyNumber_lenght();
-		virtual ~unifyNumber_lenght();
+namespace fafik77 {
 
-		static wxString unify(wxULongLong number, size_t amountTo);
+wxString unifyNumber_lenght(wxULongLong number, size_t amountTo);
 
-	protected:
-
-	private:
-};
-
+} //namespace
 #endif // UNIFYNUMBER_LENGHT_H
