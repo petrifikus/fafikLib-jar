@@ -1,0 +1,6 @@
+Debug/
+Release/
+x64/
+.vs/
+wx/*.cpp
+wx/*.h

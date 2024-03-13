@@ -1,0 +1,146 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Source Files\src">
+      <UniqueIdentifier>{11feb781-8559-48ea-9a8c-8775a0a0b583}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\src\fafikLib">
+      <UniqueIdentifier>{db8c2454-a0ea-4a9a-b926-a1c99227277f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\include">
+      <UniqueIdentifier>{711f42a4-4c31-4169-9f9d-d18afd9c23ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\include\fafikLib">
+      <UniqueIdentifier>{68fd8610-3d68-4ad1-8c2d-8d559255cca8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pk2_jarApp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pk2_jarMain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\LoadRsFile.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\recursiveRmDir.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SummFileSizes.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\unifyNumber_lenght.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\Byte_LL.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\CryptoLib.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\f77_helpers.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\fafikLib_DB.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\fafikLib_regex.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\FontManager.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\iconHelper.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\itemEntry.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\LoadCfg_call.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\messageQueue_F77.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\Quotation.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\ReplaceALL.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\UniFileStream.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\wxStringInputStream.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\fafikLib\fafikLib_regex.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\FileType_MDFC.h">
+      <Filter>Header Files\include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LoadRsFile.h">
+      <Filter>Header Files\include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\recursiveRmDir.h">
+      <Filter>Header Files\include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SummFileSizes.h">
+      <Filter>Header Files\include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\unifyNumber_lenght.h">
+      <Filter>Header Files\include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\Byte_LL.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\CryptoLib.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\f77_helpers.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\fafikLib_DB.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\FontManager.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\iconHelper.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\itemEntry.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\LoadCfg_call.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\messageQueue_F77.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\Quotation.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\ReplaceALL.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\UniFileStream.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\wxStringInputStream.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
