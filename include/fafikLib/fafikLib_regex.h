@@ -1,9 +1,10 @@
 #ifndef FAFIKLIB_REGEX_H
 #define FAFIKLIB_REGEX_H
 
-#include "fafikLib/wxStringInputStream.h"
-#include "fafikLib/Byte_LL.h"
-#include "FileType_MDFC.h"	//_FileType_MDFC_Checksum
+#include <wx/defs.h>
+#include "wxStringInputStream.h"
+#include "Byte_LL.h"
+#include "../FileType_MDFC.h"	//_FileType_MDFC_Checksum
 #include <algorithm>
 
  ///RegPath the advanced regex for File Paths
@@ -96,7 +97,7 @@ class fafikLib_regex
 		unsigned short Hash_type= _FileType_MDFC_Checksum_none;
 		resultPosition_it() {}
 		resultPosition_it(unsigned short pos_from, unsigned short pos_to): pos_from(pos_from), pos_to(pos_to) {}
-		unsigned short size() const {if(pos_to== (unsigned short)-1u)return -1; return (pos_to- pos_from) +1;}
+		unsigned short size() const {if(pos_to== (unsigned short)-1)return -1; return (pos_to- pos_from) +1;}
 		unsigned short length() const {if(pos_to== (unsigned short)-1)return -1; return (pos_to- pos_from) +1;}
 		bool isAnyChar()const {return type_processes==item_processes_Star || type_processes==item_processes_AnyChar;}
 		bool isLiteral()const {return type_processes==item_processes_String || type_processes==item_processes_AnyOneOfText; }
@@ -392,12 +393,12 @@ class fafikLib_regex
 		 ///override dtr
 		~item_match_anyOneOfText(){};
 		 ///storage for string
-		wxArrayString stringsList;
+		wxStringVector stringsList;
 		 ///CaseSense, reversed, @see e_options_bit
 		bool8 optionsMask= 0;
 	  //def
-		typedef wxArrayString::iterator iterator;
-		typedef wxArrayString::const_iterator const_iterator;
+		typedef wxStringVector::iterator iterator;
+		typedef wxStringVector::const_iterator const_iterator;
 		const_iterator begin() const {return stringsList.begin();}
 		const_iterator end() const {return stringsList.end();}
 	  //abstract-less functions section
@@ -615,26 +616,26 @@ class fafikLib_regex
 	typedef unsigned short canSkippSomeDirs;
   //functions and calls
 	fafikLib_regex( const wxString& strPattern, bool caseInsensitive= true, DWORD FileAttribs_type= -1 );
-	static size_t separatePath( const wxString& PathAsString, wxArrayString& pathInParts );
+	static size_t separatePath( const wxString& PathAsString, wxStringVector& pathInParts );
 		///@return hitTest_returns:: @see fafikLib_regex::hitTest_returns
-		///@param const wxArrayString& PathInParts -takes in path relative to the source.root
+		///@param const wxStringVector& PathInParts -takes in path relative to the source.root
 		///@param fileAttribs -provide file attributes whether its a file/folder
 		///@param bool SamePath -set this to skip processing of parentDirectories of item
 		///@param bool isIncludeMode -it will report back include error instead of exclude error
 		///@param (canSkippSomeDirs* O_canSkippDirs) -keep this to skip processing of already matched path part
 		///@param (resultPosition* <b>resultPos</b>) -retrieve result of match, size based on Template not on provided path
 		///the main part of the regex	--array separated parts of path edition
-	int testPath( const wxArrayString& PathInParts, const DWORD &fileAttribs, const bool& SamePath=false, const bool& isIncludeMode=false, canSkippSomeDirs* O_canSkippDirs=nullptr, resultPosition* resultPos=nullptr) const;
+	int testPath( const wxStringVector& PathInParts, const DWORD &fileAttribs, const bool& SamePath=false, const bool& isIncludeMode=false, canSkippSomeDirs* O_canSkippDirs=nullptr, resultPosition* resultPos=nullptr) const;
 		///@return hitTest_returns:: @see fafikLib_regex::hitTest_returns
 	inline int testPath( const wxString& PathAsString, const DWORD &fileAttribs, const bool& isIncludeMode=false, resultPosition* resultPos=nullptr ) const {
-		wxArrayString pathInParts;
+		wxStringVector pathInParts;
 		separatePath(PathAsString, pathInParts);
 		return testPath( pathInParts, fileAttribs, false, isIncludeMode, nullptr, resultPos );
 	}
 
 	 ///gets Hash string from file name (eg. "The Movie [01AB]" => "01AB".crc16) that was specified in regpath	//2023-09-08
 	 ///@return @b wxString of Hash part AND @b HashType_o info of Hash Type = @see _FileType_MDFC_Checksum
-	static wxString getHashPart(const wxArrayString& PathInParts, const resultPosition* resultPos, _FileType_MDFC_Checksum* HashType_o );
+	static wxString getHashPart(const wxStringVector& PathInParts, const resultPosition* resultPos, _FileType_MDFC_Checksum* HashType_o );
 
 	inline bool hasHash() const {return regex_item.hasHash();}
 	inline _FileType_MDFC_Checksum getHashType() const {return regex_item.getHashType();}
@@ -722,12 +723,12 @@ class fafikLib_regexVector_file: public wxVector<fafikLib_regex*>
 	 ///@return @see fafikLib_regex::testReturns
 	 ///@param SamePath & O_canSkippDirs are linked together if there is one only one will act, if both are set then they will act together
 	 ///processed result call to each item
-	int testPath( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tracker* O_canSkippDirs=nullptr, fafikLib_regex::resultHashInfo* resultHashInfo_o=nullptr) const;
+	int testPath( const wxStringVector& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tracker* O_canSkippDirs=nullptr, fafikLib_regex::resultHashInfo* resultHashInfo_o=nullptr) const;
 
   //easy access
 	 ///@return false =Skip, true =Copy
 	 ///gives a bool response: Skip or Copy (probably not as exact as from `fafikLib_regexMultipleFiles`->testPath )
-	bool testPath_copies( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tracker* O_canSkippDirs=nullptr) const;
+	bool testPath_copies( const wxStringVector& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tracker* O_canSkippDirs=nullptr) const;
 
 	inline void Set_CaseSensitive(bool CaseSensitiveMode) { type_caseSensitive= CaseSensitiveMode; }
 	inline void Set_Include(bool includeMode) { type_isInclude= includeMode; }
@@ -760,7 +761,7 @@ class fafikLib_regexMultipleFiles {
 	inline void Add_RuleFile_entry(const fafikLib_regexVector_file* ruleFileEntry) {filesToProcess.push_back(ruleFileEntry);}
 	 ///@return false =Skip, true =Copy
 	 ///gives a bool response: Skip or Copy
-	bool testPath_doCopy( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tr_PerPath* storageCanSkipp= nullptr, fafikLib_regex::resultHashInfo* resultHashInfo_o=nullptr) const;
+	bool testPath_doCopy( const wxStringVector& PathInParts, const DWORD& fileAttribs, bool SamePath=false, canSkippDirs_tr_PerPath* storageCanSkipp= nullptr, fafikLib_regex::resultHashInfo* resultHashInfo_o=nullptr) const;
 
 	 ///its not automatic, you have to call it, or request it when creating the class
 	size_t DeleteAll();

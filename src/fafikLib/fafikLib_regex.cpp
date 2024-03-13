@@ -9,7 +9,7 @@ fafikLib_regex::fafikLib_regex( const wxString& strPattern, bool caseInsensitive
 fafikLib_regex::~fafikLib_regex()
 {
 }
-size_t fafikLib_regex::separatePath( const wxString& PathAsString, wxArrayString& pathInParts )
+size_t fafikLib_regex::separatePath( const wxString& PathAsString, wxStringVector& pathInParts )
 {
 	pathInParts.clear();
 	const wxString::const_iterator iterCS= PathAsString.begin();
@@ -35,7 +35,7 @@ bool fafikLib_regex::isMatchingAttribFile_dir(const DWORD &fileAttribs, const DW
 	}
 	return( fileAttribs & mask_testAttribs); //matches the mask
 }
-wxString fafikLib_regex::getHashPart(const wxArrayString& PathInParts, const resultPosition* resultPos, _FileType_MDFC_Checksum* HashType_o)
+wxString fafikLib_regex::getHashPart(const wxStringVector& PathInParts, const resultPosition* resultPos, _FileType_MDFC_Checksum* HashType_o)
 {
 	if(resultPos==nullptr || HashType_o==nullptr || resultPos->empty()) return wxEmptyString;
 	const wxString& fileName= PathInParts.Last();
@@ -52,7 +52,7 @@ wxString fafikLib_regex::getHashPart(const wxArrayString& PathInParts, const res
 }
 
 
-int fafikLib_regex::testPath( const wxArrayString& PathInParts, const DWORD &fileAttribs, const bool& SamePath, const bool& isIncludeMode, canSkippSomeDirs* O_canSkippDirs, resultPosition* resultPos ) const
+int fafikLib_regex::testPath( const wxStringVector& PathInParts, const DWORD &fileAttribs, const bool& SamePath, const bool& isIncludeMode, canSkippSomeDirs* O_canSkippDirs, resultPosition* resultPos ) const
 {
 	if(!b_compiled){
 		wxLogWarning("! Warning ! Cant test with empty, not set Pattern.");
@@ -334,10 +334,10 @@ int fafikLib_regex::testPath_withHints( const item_base_pathParts& namedP, itemP
 			 //check if any error level
 			if( errReturned ) {
 				if( !reCheckNextItem ){
-					printf(" !! F Error %i at pos %i ! fatal, can't check further back\n", errReturned, atPos);
+					printf(" !! F Error %i at pos %u ! fatal, can't check further back\n", errReturned, (unsigned int)atPos);
 					return hitTest_failedMatch;
 				}
-				printf(" !! Error %i at pos %i ! rechecking\n", errReturned, atPos);
+				printf(" !! Error %i at pos %u ! rechecking\n", errReturned, (unsigned int)atPos);
 				atPos= 0;	//reset checker back to 0
 				reCheckNextItem= 0;
 				continue;
@@ -2328,7 +2328,7 @@ bool fafikLib_regex::item_match_anyOneOfText::_sortStrings(const wxString& item_
 
  //class fafikLib_regexVector_file, from this point
 
-int fafikLib_regexVector_file::testPath( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tracker* O_canSkippDirs, fafikLib_regex::resultHashInfo* resultHashInfo_o) const
+int fafikLib_regexVector_file::testPath( const wxStringVector& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tracker* O_canSkippDirs, fafikLib_regex::resultHashInfo* resultHashInfo_o) const
 {
 	if(this->empty())
 		return fafikLib_regex::testReturns_noMatch;
@@ -2366,7 +2366,7 @@ int fafikLib_regexVector_file::testPath( const wxArrayString& PathInParts, const
 	}
 	return fafikLib_regex::testReturns_noMatch;
 }
-bool fafikLib_regexVector_file::testPath_copies( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tracker* O_canSkippDirs) const
+bool fafikLib_regexVector_file::testPath_copies( const wxStringVector& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tracker* O_canSkippDirs) const
 {
 	int retResState= this->testPath(PathInParts, fileAttribs, SamePath, O_canSkippDirs);
 	if(retResState== fafikLib_regex::testReturns_isExcluded) return false;	//matches & mode=exclude ==> skip
@@ -2379,7 +2379,7 @@ bool fafikLib_regexVector_file::testPath_copies( const wxArrayString& PathInPart
 
  //class fafikLib_regexMultipleFiles, from this point
 
-bool fafikLib_regexMultipleFiles::testPath_doCopy( const wxArrayString& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tr_PerPath* storageCanSkipp, fafikLib_regex::resultHashInfo* resultHashInfo_o) const
+bool fafikLib_regexMultipleFiles::testPath_doCopy( const wxStringVector& PathInParts, const DWORD& fileAttribs, bool SamePath, canSkippDirs_tr_PerPath* storageCanSkipp, fafikLib_regex::resultHashInfo* resultHashInfo_o) const
 {
 	 ///do treat non matching elements as not Included (that means Skip)
 	bool treatThisAsInclude= false;

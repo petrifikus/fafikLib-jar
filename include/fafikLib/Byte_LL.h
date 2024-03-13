@@ -162,17 +162,11 @@ struct bool8 //: protected bool8b
 
 	///new on 2020-02-05
 bool8b at(BYTE pos);
-//	return bool8b(this, pos);
-// }
-const bool8b at(BYTE pos)const;
-//	return bool8b(this, pos);
-// }
 bool8b operator[](BYTE pos);
-//	return at(BYTE pos);
-// }
+#ifndef _MSC_VER
+const bool8b at(BYTE pos)const;
 const bool8b operator[](BYTE pos) const;
-//	return at(BYTE pos);
-// }
+#endif
 
  protected:
 	BYTE store= 0;

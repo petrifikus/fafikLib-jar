@@ -3,7 +3,8 @@
 
 #include "LoadRsFile.h"
 #include <wx/mstream.h>
-//#include <windows.h>
+#include <wx/msw/private.h>
+#include <windows.h>
 
 
 wxMemoryInputStream* GetResourceInputStream(const wxString& resource_name, const wxString& resource_type){

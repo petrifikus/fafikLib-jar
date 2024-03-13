@@ -3,16 +3,17 @@
 bool8b bool8::at(BYTE pos){
 	return bool8b(this, pos);
 }
+bool8b bool8::operator[](BYTE pos) {
+	return at(pos);
+}
+#ifndef _MSC_VER
 const bool8b bool8::at(BYTE pos)const{
 	return bool8b(this, pos);
 }
-bool8b bool8::operator[](BYTE pos){
-	return at(BYTE pos);
-}
 const bool8b bool8::operator[](BYTE pos) const{
-	return at(BYTE pos);
+	return at(pos);
 }
-
+#endif
 
 BYTE* FafikEC::BytesP_fromLL( long long &from_LL )
 {

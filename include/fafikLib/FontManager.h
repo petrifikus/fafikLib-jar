@@ -1,3 +1,6 @@
+#include <wx/string.h>
+#include <wx/vector.h>
+#include <windows.h>
 #ifndef FONTMANAGER_H
 #define FONTMANAGER_H
 

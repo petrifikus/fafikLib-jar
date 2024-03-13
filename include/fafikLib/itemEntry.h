@@ -313,7 +313,7 @@ struct itemEntry
 
 
 	 ///get tree children to this getFrom itemEntry
-	static wxStringVector getParentTree(const itemEntry* getFrom);
+	static wxStringVector getParentTreeArr(const itemEntry* getFrom);
 	 ///pre-made call for getParentTree_asArray()+separator
 	static wxString getParentTree(const itemEntry* getFrom, const wxString separator=".");
 

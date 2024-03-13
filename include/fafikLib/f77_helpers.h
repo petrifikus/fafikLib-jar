@@ -159,6 +159,10 @@ class atos {
  	static wxString toWxString(const wxLongLong& input) {return input.ToString();}
 };
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4200 )
+#endif // _MSC_VER
  ///defines most common hashing sizes
 union HashSizez{
     BYTE u512[512/8]= {0};
@@ -174,7 +178,9 @@ union HashSizez{
 	 ///quarry data as char
 	char u_anyc[0];
 };
-
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif // _MSC_VER
  ///convert data block to hex form
 std::string toHex(const void* data, size_t sizeData, bool reverse=false);
  ///convert data block to hex form

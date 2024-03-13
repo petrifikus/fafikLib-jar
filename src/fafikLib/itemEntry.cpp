@@ -314,7 +314,7 @@ bool itemEntry::removeItems(iterator it1, size_t amount, bool silent)
 	return removeItems( it1, it1+ amount, silent );
 }
 
-wxStringVector getParentTree(const itemEntry* getFrom)
+wxStringVector itemEntry::getParentTreeArr(const itemEntry* getFrom)
 {
 	wxStringVector retAStr;
 	if(!getFrom) return retAStr;
@@ -328,9 +328,9 @@ wxStringVector getParentTree(const itemEntry* getFrom)
 	} while(getFrom);
 	return retAStr;
 }
-wxString getParentTree(const itemEntry* getFrom, const wxString separator)
+wxString itemEntry::getParentTree(const itemEntry* getFrom, const wxString separator)
 {
-	wxStringVector temp_arrStr= getParentTree(getFrom);
+	wxStringVector temp_arrStr= getParentTreeArr(getFrom);
 	wxString ret_str;
 	for(size_t pos_u=0; pos_u<temp_arrStr.size(); pos_u++){
 		ret_str.Append(temp_arrStr.Item(pos_u));
@@ -429,7 +429,14 @@ bool8 itemEntry::_operLowerB_compareStr( const wxString* str_a, const wxString* 
 
 itemEntry::iterator itemEntry::binaryGetPosOf(const itemEntry& TemplateItem)
 {
-	return std::__lower_bound( sub_itemTable.begin(), sub_itemTable.end(), TemplateItem, itemEntry::_operLowerB_compareIE );
+#ifdef _MSC_VER
+	return std::lower_bound( sub_itemTable.begin(), sub_itemTable.end(), TemplateItem,
+		[](const itemEntry * item, const itemEntry & compa)
+		{ return _operLowerB_compareIE_1(item, &compa); }
+	);
+#else //mingw
+	return std::__lower_bound(sub_itemTable.begin(), sub_itemTable.end(), TemplateItem, itemEntry::_operLowerB_compareIE);
+#endif // _MSC_VER
 }
 bool itemEntry::binaryGetPosOf_exists(const_iterator prevRetValue, const itemEntry& TemplateItem)const
 {

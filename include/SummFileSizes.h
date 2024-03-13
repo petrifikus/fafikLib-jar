@@ -1,3 +1,6 @@
+#include <cstdint>
+#include <wx/longlong.h>
+#include <wx/filefn.h>
 #ifndef SUMMFILESIZES_H
 #define SUMMFILESIZES_H
 

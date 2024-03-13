@@ -15,6 +15,9 @@
 #include <wx/string.h>
 //*)
 
+
+#include "include/fafikLib/fafikLib_DB.h"
+
 //helper functions
 enum wxbuildinfoformat {
     short_f, long_f };
@@ -56,6 +59,10 @@ END_EVENT_TABLE()
 
 pk2_jarFrame::pk2_jarFrame(wxWindow* parent,wxWindowID id)
 {
+	ItemEntry tempItem("jar test build");
+	wxLogMessage("tempItem: %s", tempItem.value);
+
+
     //(*Initialize(pk2_jarFrame)
     wxBoxSizer* BoxSizer4;
     wxMenuItem* MenuItem2;
