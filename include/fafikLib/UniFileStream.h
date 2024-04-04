@@ -373,6 +373,9 @@ class UniFileStream_file: public UniFileStream_baseWritable
 	 ///open a file by fileName
 	UniFileStream_file( const wxString& fileName, const bool readOnly=true, wxString *line= nullptr )
 	{
+		if (!readOnly && !wxFileExists(fileName)) {
+			wxFFile f(fileName, "w+");
+		}
 		pass_p_ffile= new wxFFile(fileName, (readOnly? "rb" : "r+b") );
 		_ownedFile= autoDelete_pass_p_ffile= true;
 		_typeOfObject= objectType_file;
@@ -824,9 +827,13 @@ class UniFileStream_fileArr: protected UniFileStream_arr
 
  public:
  	enum enumAtClose: BYTE {
+		 //nothing on close
 		AtClose_null= 0,
+		 //trim self end
 		AtClose_trim_s= 1,
+		 //save on close
 		AtClose_save= 2,
+		 //apply trim
 		AtClose_trim_aply= 128,
 		AtClose_trim= AtClose_trim_s | AtClose_trim_aply,
  	};
@@ -835,7 +842,7 @@ class UniFileStream_fileArr: protected UniFileStream_arr
 		///@param ???? &4 trim every part to filePartMaxSize
 		///@param &128 apply trim, otherwise its unwanted
 		///we by default dont want any over files(trimFile())
- 	bool8 AtClose= 1;
+ 	bool8 AtClose= AtClose_trim_s;
 		///default is WriteRead, but for source ReadOnly is enough
  	bool openReadOnly= 0;
  	UniFileStream_fileArr(){_typeOfObject= objectType_writeArr;}
@@ -893,7 +900,7 @@ class UniFileStream_fileArr: protected UniFileStream_arr
 	}
 
 	 ///init fileBaseName, and makeFile
-	bool Open(const wxString& pathName);
+	bool Open(const wxString& pathName, bool readOnly=false);
 
 	 ///all handlers.Flush(), ::Close(), !!! Warning `AtClose` will be applied and by default trim files
 	bool Close_save(bool save=1);

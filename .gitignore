@@ -2,5 +2,10 @@ Debug/
 Release/
 x64/
 .vs/
+html/
+latex/
 wx/*.cpp
 wx/*.h
+Doxyfile_Archive
+pk2_jar.bmarks
+pk2_jar.layout

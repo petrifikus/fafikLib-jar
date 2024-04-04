@@ -83,6 +83,12 @@
     <ClCompile Include="src\fafikLib\wxStringInputStream.cpp">
       <Filter>Source Files\src\fafikLib</Filter>
     </ClCompile>
+    <ClCompile Include="src\fafikLib\ArchiveFile.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fafikLib\itemEntryUniFile.cpp">
+      <Filter>Source Files\src\fafikLib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\fafikLib\fafikLib_regex.h">
@@ -140,6 +146,12 @@
       <Filter>Header Files\include\fafikLib</Filter>
     </ClInclude>
     <ClInclude Include="include\fafikLib\wxStringInputStream.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\ArchiveFile.h">
+      <Filter>Header Files\include\fafikLib</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fafikLib\itemEntryUniFile.h">
       <Filter>Header Files\include\fafikLib</Filter>
     </ClInclude>
   </ItemGroup>

@@ -16,7 +16,8 @@
 //*)
 
 
-#include "include/fafikLib/fafikLib_DB.h"
+//#include "include/fafikLib/fafikLib_DB.h"	//ItemEntry
+#include "ArchiveFile.h"	//archives
 
 //helper functions
 enum wxbuildinfoformat {
@@ -51,16 +52,19 @@ const long pk2_jarFrame::idMenuQuit = wxNewId();
 const long pk2_jarFrame::idMenuAbout = wxNewId();
 const long pk2_jarFrame::ID_STATUSBAR1 = wxNewId();
 //*)
-
-BEGIN_EVENT_TABLE(pk2_jarFrame,wxFrame)
-    //(*EventTable(pk2_jarFrame)
-    //*)
+BEGIN_EVENT_TABLE(pk2_jarFrame, wxFrame)
+//(*EventTable(pk2_jarFrame)
+//*)
 END_EVENT_TABLE()
+
+using namespace fafik77;
 
 pk2_jarFrame::pk2_jarFrame(wxWindow* parent,wxWindowID id)
 {
-	ItemEntry tempItem("jar test build");
-	wxLogMessage("tempItem: %s", tempItem.value);
+	std::shared_ptr<UniFileStream_base> tempFile= std::make_shared<UniFileStream_file>("V:\\test.mdfca",  false );
+	itemEntryUniFile tempItem("jar test build", tempFile);
+	std::dynamic_pointer_cast<UniFileStream_file>(tempFile)->Write("test");
+	std::dynamic_pointer_cast<UniFileStream_file>(tempFile)->Flush();
 
 
     //(*Initialize(pk2_jarFrame)
@@ -76,8 +80,8 @@ pk2_jarFrame::pk2_jarFrame(wxWindow* parent,wxWindowID id)
     wxMenu* Menu2;
 
     Create(parent, id, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE, _T("id"));
-    Notebook1 = new wxNotebook(this, ID_NOTEBOOK1, wxDefaultPosition, wxDefaultSize, 0, _T("ID_NOTEBOOK1"));
-    Panel1 = new wxPanel(Notebook1, ID_PANEL1, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL, _T("ID_PANEL1"));
+	Notebook1 = new wxNotebook(this, ID_NOTEBOOK1, wxDefaultPosition, wxDefaultSize, 0, _T("ID_NOTEBOOK1"));
+	Panel1 = new wxPanel(Notebook1, ID_PANEL1, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL, _T("ID_PANEL1"));
     FlexGridSizer1 = new wxFlexGridSizer(0, 2, 0, 0);
     FlexGridSizer1->AddGrowableCol(0);
     BoxSizer1 = new wxBoxSizer(wxHORIZONTAL);
@@ -118,6 +122,21 @@ pk2_jarFrame::~pk2_jarFrame()
 {
     //(*Destroy(pk2_jarFrame)
     //*)
+}
+
+void pk2_jarFrame::showHelp()
+{
+wxLogMessage("Showing help for archive operations. <required>, [optional]\n\
+open <archive file>\t opens archive\n\
+sort\t sorts the archive\n\
+append <regex>\t sorts the archive\n\
+insert <regex>\t sorts the archive\n\
+add <regex>\t sorts the archive\n\
+pop [count]\t sorts the archive\n\
+remove <regpath>\t sorts the archive\n\
+extract <to folder> [regpath]\t sorts the archive\n\
+save\t sorts the archive\n\
+");
 }
 
 void pk2_jarFrame::OnQuit(wxCommandEvent& event)

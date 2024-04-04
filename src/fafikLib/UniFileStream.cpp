@@ -1140,10 +1140,11 @@ void UniFileStream_fileArr::init_fileBaseNameAddition(const wxString& str)
 		fileBaseNameAddition= str;
 	}
 }
-bool UniFileStream_fileArr::Open(const wxString& pathName)
+bool UniFileStream_fileArr::Open(const wxString& pathName, bool readOnly)
 {
 	Close_save(0);
 	AtClose.changeBit(7);	//reset trim to (0)
+	openReadOnly = readOnly;
 
 	fileBaseName= pathName;
 
@@ -1189,6 +1190,7 @@ bool UniFileStream_fileArr::Close_save(bool save)
 //	fWriteHand.clear();
 	P_DataLength= P_lastPos= 0;
 	currFile= 0;
+	filePartMaxSize = 0;
 //printf("  End close write_fileArr\n");
 return 1;
 }
@@ -1197,6 +1199,7 @@ bool UniFileStream_fileArr::Close_ForceDrop()
 	UniFileStream_arr::Close();
 	P_DataLength= P_lastPos= 0;
 	currFile= 0;
+	filePartMaxSize = 0;
 return 1;
 }
 

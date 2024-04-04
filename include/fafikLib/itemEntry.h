@@ -31,6 +31,7 @@ class fafikLib_DB;
 enum itemEntryStores {
 	 ///also unwritable
 	ie_none=0,
+	ie_unwritable = ie_none,
 	 ///string value
 	ie_string=1,
 	ie_value=1,
@@ -65,6 +66,8 @@ enum class itemEntry_storeDerived {
 	sdie_bytes,
 	sdie_number_LL,
 	sdie_number_D,
+	 ///links to UniFileStream_base
+	sdie_UniFile,
 };
 
 

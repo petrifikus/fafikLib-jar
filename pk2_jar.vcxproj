@@ -177,6 +177,7 @@
   <ItemGroup>
     <ClCompile Include="pk2_jarApp.cpp" />
     <ClCompile Include="pk2_jarMain.cpp" />
+    <ClCompile Include="src\fafikLib\ArchiveFile.cpp" />
     <ClCompile Include="src\fafikLib\Byte_LL.cpp" />
     <ClCompile Include="src\fafikLib\CryptoLib.cpp" />
     <ClCompile Include="src\fafikLib\f77_helpers.cpp" />
@@ -185,6 +186,7 @@
     <ClCompile Include="src\fafikLib\FontManager.cpp" />
     <ClCompile Include="src\fafikLib\iconHelper.cpp" />
     <ClCompile Include="src\fafikLib\itemEntry.cpp" />
+    <ClCompile Include="src\fafikLib\itemEntryUniFile.cpp" />
     <ClCompile Include="src\fafikLib\LoadCfg_call.cpp" />
     <ClCompile Include="src\fafikLib\messageQueue_F77.cpp" />
     <ClCompile Include="src\fafikLib\Quotation.cpp" />
@@ -197,6 +199,7 @@
     <ClCompile Include="src\unifyNumber_lenght.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\fafikLib\ArchiveFile.h" />
     <ClInclude Include="include\fafikLib\Byte_LL.h" />
     <ClInclude Include="include\fafikLib\CryptoLib.h" />
     <ClInclude Include="include\fafikLib\f77_helpers.h" />
@@ -205,6 +208,7 @@
     <ClInclude Include="include\fafikLib\FontManager.h" />
     <ClInclude Include="include\fafikLib\iconHelper.h" />
     <ClInclude Include="include\fafikLib\itemEntry.h" />
+    <ClInclude Include="include\fafikLib\itemEntryUniFile.h" />
     <ClInclude Include="include\fafikLib\LoadCfg_call.h" />
     <ClInclude Include="include\fafikLib\messageQueue_F77.h" />
     <ClInclude Include="include\fafikLib\Quotation.h" />
