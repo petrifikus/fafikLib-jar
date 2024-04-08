@@ -16,12 +16,13 @@ namespace fafik77 {
 	}
 	ArchiveFile::ArchiveFile(const wxString& fileName)
 	{
-		arFiles.init_fileBaseNameAddition("mar");
+		arFiles.init_fileBaseNameAddition("arMdfc");
 		Open(fileName);
 	}
 	void ArchiveFile::Close()
 	{
 		arFiles.Close_ForceDrop();
+		setNotDirty();
 	}
 	void ArchiveFile::Open(const wxString& fileName)
 	{
@@ -38,6 +39,7 @@ namespace fafik77 {
 	}
 	void ArchiveFile::Save()
 	{
+		if (!IsOpened()) return; //not opened
 		if (!IsDirty()) return; //nothing changed
 
 		if (IsDirtyInsert()) { //rebuild the archive

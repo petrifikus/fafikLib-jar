@@ -41,18 +41,28 @@ protected:
 	BYTE dirty= dirty_notDirty;
 	 /*how to handle insert name overlap*/
 	BYTE responseOverwrite= responde_none;
+	 //appended changes
 	inline void setDirtyAppend() { dirty |= dirty_appended; }
+	 //inserted changes
 	inline void setDirtyInsert() { dirty |= dirty_inserted; }
+	 //flushed changes
 	inline void setNotDirty() { dirty = dirty_notDirty; }
 public:
 
 	~ArchiveFile();
+	 //empty ctor
+	ArchiveFile() {
+		arFiles.init_fileBaseNameAddition("arMdfc");
+	}
+	/**
+	 * @brief opens archive
+	*/
 	ArchiveFile(const wxString& fileName);
 	
  //functions
 	 /* closes this archive (without saving)*/
 	void Close();
-	 /* opens archive */
+	 /* opens archive (previous archive will be closed)*/
 	void Open(const wxString& fileName);
 	
 	 /*appends file to the end of archive file*/
@@ -63,6 +73,12 @@ public:
 	 * @param [intoFolder] -place gathered files in this sub folder in archive
 	*/
 	void insertFile(const wxString& regex, const wxString& intoFolder="");
+	/**
+	 * @brief inserts file into sorted place
+	 * @param regex -windows file regex to gather matching files
+	 * @param [intoFolder] -place gathered files in this item in archive
+	*/
+	void insertFile(const wxString& regex, itemEntry* intoFolder);
 	 /*sorts the appended part of the archive files to be in alphabetical order*/
 	void sort();
 	 /*removes the matching files from the archive*/
@@ -89,6 +105,9 @@ public:
 	bool IsDirty() const { return dirty; }
 	bool IsDirtyAppend() const { return dirty & dirty_appended; }
 	bool IsDirtyInsert() const { return dirty & dirty_inserted; }
+	itemEntry* getDBTable() { return &arDictionary.DB_table; }
+	itemEntry* getFilesTable() { return arDictionary.DB_table.getOrAdd("Files", itemEntryStores::ie_Array); }
+	itemEntry* getTreeTable() { return arDictionary.DB_table.getOrAdd("Tree", itemEntryStores::ie_Object); }
 
 	//size_t getFileCount() const { return arDictionary.DB_table.size(); }
 	//wxFileOffset Length() const { return arFiles.Length(); }

@@ -1,9 +1,11 @@
+00 doxygen/
 Debug/
 Release/
 x64/
 .vs/
 html/
 latex/
+wx/*
 wx/*.cpp
 wx/*.h
 Doxyfile_Archive
